@@ -23,7 +23,10 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
                     'The upload of attachments is not supported by GitHub.')
 
     def get_post_url(self, request, issue, integration, subject, message, attachments):
-        return integration.get_option_value('repo_url')
+        repo_url = integration.get_option_value('repo_url')
+        if repo_url:
+            repo = repo_url.replace('https://github.com', '').strip('/')
+            return f'https://api.github.com/repos/{repo}/issues'
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
         return {
