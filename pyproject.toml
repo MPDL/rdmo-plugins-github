@@ -10,7 +10,7 @@ authors = [
 maintainers = [
     {name = "Jochen Klar", email = "mail@jochenklar.de"},
 ]
-description = "Plugin for RDMO to send tasks to GitHub"
+description = "GitHub Plugins for RDMO."
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
