@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rdmo-github"
+name = "rdmo-plugins-github"
 authors = [
     {name = "RDMO Arbeitsgemeinschaft", email = "rdmo-team@listserv.dfn.de"},
 ]
@@ -32,6 +32,9 @@ dependencies = [
     "requests>=2.31",
 ]
 dynamic = ["version"]
+
+[project.urls]
+repository = "https://github.com/rdmorganiser/rdmo-plugins-github"
 
 [tool.setuptools]
 packages = ["rdmo_github"]
