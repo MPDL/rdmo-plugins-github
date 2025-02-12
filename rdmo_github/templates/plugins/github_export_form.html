@@ -1,0 +1,35 @@
+{% extends 'core/page.html' %}
+{% load i18n %}
+{% load core_tags %}
+{% load static %}
+
+{% block page %}
+
+    <h1>{% blocktrans %}Export to GitHub{% endblocktrans %}</h1>
+
+    {% bootstrap_form submit=_('Export to GitHub') %}
+
+    <script src="{% static 'common_script_functions.js' %}"></script>
+    
+    <script>
+        function select_all_export_options(option_count) {
+            var checkBox = document.getElementById("id_all_export_options");
+
+            for (let i=0; i<option_count; i++) {
+                var option = document.getElementById(`id_export_options_${i}`);
+                option.checked = checkBox.checked
+            }
+        }
+    </script>
+
+    <style>
+        .form-group.field-new_repo_name {
+            display: {{ new_repo_name_display }};
+        }
+
+        .form-group.field-repo {
+            display: {{ repo_display }};
+        }
+    </style>
+
+{% endblock %}

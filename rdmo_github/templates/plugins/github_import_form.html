@@ -1,0 +1,24 @@
+{% extends 'projects/project_import_form.html' %}
+{% load i18n %}
+{% load core_tags %}
+{% load static %}
+
+{% block page %}
+
+    {{ block.super }}
+
+    <script src="{% static 'common_script_functions.js' %}"></script>
+
+    <style>
+        .form-group.field-other_repo_check {
+            display: {% if app_type == 'github_app' %}block {% else %}none {% endif %};
+        }
+        .form-group.field-repo {
+            display: {{ repo_display }};
+        }
+        .form-group.field-other_repo {
+            display: {{ other_repo_display }};
+        }
+    </style>
+
+{% endblock %}
