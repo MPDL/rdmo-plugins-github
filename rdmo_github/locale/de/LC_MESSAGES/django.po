@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-01-10 12:56+0000\n"
+"POT-Creation-Date: 2025-02-14 09:44+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,11 +26,11 @@ msgstr "Neues Repositorium anlegen"
 msgid "Name for the new repository"
 msgstr "Name des neuen Repositoriums"
 
-#: forms.py:31 forms.py:65
+#: forms.py:31 forms.py:71
 msgid "GitHub repository"
-msgstr "GitHub Repositorium"
+msgstr "GitHub-Repositorium"
 
-#: forms.py:33 forms.py:66
+#: forms.py:33 forms.py:72
 msgid "Please use the form username/repository or organization/repository."
 msgstr ""
 "Bitte verwenden Sie die Form Benutzername/Repositorium oder Organisation/"
@@ -56,94 +56,89 @@ msgstr "Commitnachricht"
 msgid "A name for the new repository is required"
 msgstr "Ein Name für das neue Repositorium ist erforderlich"
 
-#: forms.py:60
-msgid "A GitHub repository must be selected"
-msgstr "Ein GitHub-Repositorium muss ausgewählt werden"
+#: forms.py:60 forms.py:93
+msgid "A GitHub repository is required"
+msgstr "Ein GitHub-Repositorium ist erforderlich"
 
-#: forms.py:68
-msgid "File path"
-msgstr "Dateipfad"
+#: forms.py:65
+msgid "Not my repository"
+msgstr "Das Repositorium gehört mir nicht"
 
-#: forms.py:69
-msgid "Branch, tag, or commit"
-msgstr "Branch, Tag, oder Commit"
+#: forms.py:66
+msgid "Check if the repository you want to import from is not yours"
+msgstr "Auswählen, wenn das Repositorium, aus dem Sie importieren möchten, nicht Ihres ist"
 
-#: mixins.py:51 mixins.py:120
-msgid "GitHub callback error"
-msgstr "GitHub-Callback-Fehler"
+#: forms.py:76
+msgid "Public GitHub repository"
+msgstr "Öffentliches GitHub-Repositorium"
 
-#: mixins.py:52
-msgid "State parameter did not match."
-msgstr "Der Parameter 'state' stimmt nicht überein"
+#: forms.py:77
+msgid "Link of the public GitHub repository you want to import from"
+msgstr "Link des öffentlichen GitHub-Repositoriums, aus dem Sie importieren möchten"
 
-#: mixins.py:103
-msgid "GitHub App installation/update not successful"
-msgstr "Die Installation/Aktualisierung der GitHub App war nicht erfolgreich"
-
-#: mixins.py:104
-msgid "No installation id found."
-msgstr "Keine Installations-ID gefunden"
-
-#: mixins.py:121
-msgid "No redirect could be found."
-msgstr "Kein redirect gefunden"
-
-#: mixins.py:308
-msgid "Update list"
-msgstr "Liste aktualisieren"
-
-#: mixins.py:309
-msgid ""
-"List of your accessible GitHub repositories (up to 10 repos will be shown here)."
-msgstr "Liste der zugänglichen GitHub-Repositorien (bis zu 10 Repos werden hier angezeigt)."
-
-#: providers.py:276
-msgid "Add GitHub integration"
-msgstr "GitHub-Integration hinzufügen"
-
-#: providers.py:277
-msgid "Send to GitHub"
-msgstr "An GitHub senden"
-
-#: providers.py:278
-msgid ""
-"This integration allows the creation of issues in arbitrary GitHub "
-"repositories. The upload of attachments is not supported by GitHub."
-msgstr ""
-"Diese Integration ermöglicht die Erstellung von Issues in beliebigen GitHub-"
-"Repositorien. Das Hochladen von Anhängen wird von GitHub nicht unterstützt."
-
-#: providers.py:284
+#: providers.py:266
 msgid "The URL of the GitHub repository to send issues to."
 msgstr "Die URL des GitHub-Repositoriums, an das Issues gesendet werden sollen"
 
-#: providers.py:289
-msgid "The secret for a GitHub webhook to close a task (optional)."
+#: forms.py:80
+msgid "File path"
+msgstr "Dateipfad"
+
+#: forms.py:81
+msgid "Branch, tag, or commit"
+msgstr "Branch, Tag, oder Commit"
+
+#: forms.py:90
+msgid "A repository link is required"
+msgstr "Ein Repositorium-Link ist erforderlich"
+
+#: helper_services_providers.py:69
+msgid "OAuth error"
+msgstr "OAuth-Fehler"
+
+#: helper_services_providers.py:70
+#, python-format
+msgid "Something went wrong: %s"
+msgstr "Etwas ist schief gelaufen: %s"
+
+#: helper_services_providers.py:88
+msgid "OAuth authorization not successful"
+msgstr "OAuth-Autorisierung war nicht erfolgreich"
+
+#: helper_services_providers.py:89 mixins.py:49
+msgid "State parameter did not match."
+msgstr "Der Parameter 'state' stimmt nicht überein"
+
+#: helper_services_providers.py:117
+msgid "OAuth authorization successful"
+msgstr "OAuth-Autorisierung war erfolgreich"
+
+#: helper_services_providers.py:118
+msgid "But no redirect could be found."
+msgstr "Kein redirect gefunden"
+
+#: mixins.py:48 mixins.py:102
+msgid "GitHub callback error"
+msgstr "GitHub-Callback-Fehler"
+
+#: mixins.py:103
+msgid "No redirect could be found."
+msgstr "Kein redirect gefunden"
+
+#: mixins.py:275
+msgid "Update list"
+msgstr "Liste aktualisieren"
+
+#: mixins.py:276
+msgid ""
+"List of your accessible GitHub repositories (up to 10 repos will be shown "
+"here)."
 msgstr ""
-"Das 'secret' für einen GitHub-Webhook zum Schließen einer Aufgabe (optional)."
+"Liste der zugänglichen GitHub-Repositorien (bis zu 10 Repos werden hier "
+"angezeigt)."
 
-#: providers.py:388
-msgid "Install App"
-msgstr "App installieren"
-
-#: providers.py:389
-msgid "To connect to GitHub repos, you first need to install the MPDL app."
-msgstr ""
-"Die Verbindung zu GitHub-Repositorien erfordert die Installation der MPDL-"
-"GitHubApp."
-
-#: providers.py:396
-msgid "Authorize App"
-msgstr "App autorisieren"
-
-#: providers.py:397
-msgid "To connect to GitHub repos, you first need to authorize the MPDL app."
-msgstr ""
-"Die Verbindung zu GitHub-Repositorien erfordert die Autorisierung der MPDL-"
-"GitHubApp."
-
-#: templates/plugins/github_export_form.html:7
-#: templates/plugins/github_export_form.html:9
+#: templates/plugins/github_export_form.html:8
+#: templates/plugins/github_export_form.html:10
 msgid "Export to GitHub"
 msgstr "Nach GitHub exportieren"
 
@@ -158,3 +153,46 @@ msgstr "erfolgreich exportiert,konnte nicht exportiert werden"
 #: templates/plugins/github_export_success.html:17
 msgid "Go to GitHub repo"
 msgstr "Zum GitHub-Repositorium"
+
+#~ msgid "GitHub App installation/update not successful"
+#~ msgstr ""
+#~ "Die Installation/Aktualisierung der GitHub App war nicht erfolgreich"
+
+#~ msgid "No installation id found."
+#~ msgstr "Keine Installations-ID gefunden"
+
+#~ msgid "Add GitHub integration"
+#~ msgstr "GitHub-Integration hinzufügen"
+
+#~ msgid "Send to GitHub"
+#~ msgstr "An GitHub senden"
+
+#~ msgid ""
+#~ "This integration allows the creation of issues in arbitrary GitHub "
+#~ "repositories. The upload of attachments is not supported by GitHub."
+#~ msgstr ""
+#~ "Diese Integration ermöglicht die Erstellung von Issues in beliebigen "
+#~ "GitHub-Repositorien. Das Hochladen von Anhängen wird von GitHub nicht "
+#~ "unterstützt."
+
+#~ msgid "The secret for a GitHub webhook to close a task (optional)."
+#~ msgstr ""
+#~ "Das 'secret' für einen GitHub-Webhook zum Schließen einer Aufgabe "
+#~ "(optional)."
+
+#~ msgid "Install App"
+#~ msgstr "App installieren"
+
+#~ msgid "To connect to GitHub repos, you first need to install the MPDL app."
+#~ msgstr ""
+#~ "Die Verbindung zu GitHub-Repositorien erfordert die Installation der MPDL-"
+#~ "GitHubApp."
+
+#~ msgid "Authorize App"
+#~ msgstr "App autorisieren"
+
+#~ msgid ""
+#~ "To connect to GitHub repos, you first need to authorize the MPDL app."
+#~ msgstr ""
+#~ "Die Verbindung zu GitHub-Repositorien erfordert die Autorisierung der "
+#~ "MPDL-GitHubApp."
