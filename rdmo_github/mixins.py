@@ -11,8 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
 from django.utils.safestring import mark_safe
 
-# from rdmo.services.providers import OauthProviderMixin
-from .helper_services_providers import OauthProviderMixin
+from rdmo.services.providers import OauthProviderMixin
 from rdmo.core.plugins import get_plugin
 
 logger = logging.getLogger(__name__)
@@ -29,15 +28,11 @@ class GitHubAppProviderMixin(OauthProviderMixin):
         'PROJECT_IMPORTS'
     ]
 
-    def authorize(self, request):
-        # get random state and store in session
-        state = self.get_state(request)
-        
-        installation_id = self.get_from_session(request, 'installation_id')
+    def authorize(self, request, installation_id):
         if installation_id is None:
-            url = self.install_url + '?' + urlencode(self.get_install_params(state))
+            url = self.get_app_install_url(request)
         else:
-            url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
+            url = self.get_app_authorize_url(request)
 
         return HttpResponseRedirect(url)
     
@@ -195,14 +190,32 @@ class GitHubAppProviderMixin(OauthProviderMixin):
         for k,v in kwargs.items():
             self.store_in_session(request, k, v)
     
-    def get_app_config_url(self, request, installation_id):
+    def get_app_config_url(self, request, installation_id):        
+        if installation_id is None: return
+
         # get random state and store in session
         state = self.get_state(request)
         url = f'https://github.com/settings/installations/{installation_id}' + '?' + urlencode({'state': state})
 
         return url
     
+    def get_app_install_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.install_url + '?' + urlencode(self.get_install_params(state))
+
+        return url
+    
+    def get_app_authorize_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
+
+        return url
+    
     def get_repo_choices(self, request, installation_id):
+        if installation_id is None: return []
+
         url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
                 api_url=self.api_url,
                 installation_id=installation_id,
@@ -269,14 +282,29 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
     def get_repo_form_field_data(self, request):
         if APP_TYPE == 'github_app':
             installation_id = self.get_from_session(request, 'installation_id')
-            repo_choices = self.get_repo_choices(request, installation_id) if installation_id is not None else None
-            app_config_url = self.get_app_config_url(request, installation_id) if installation_id is not None else None
-            
-            link_label = _('Update list')
-            help_text = _('List of your accessible GitHub repositories (up to 10 repos will be shown here).')
-            repo_help_text=mark_safe(
-                f'{help_text} <a href="{app_config_url}">{link_label}</a>'
-            ) if app_config_url is not None else ''
+            access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
+            app_actions = {
+                'install': {
+                    'url': self.get_app_install_url(request),
+                    'link_label': _('Install App'),
+                    'link_help_text': _('To connect to GitHub repos, you first need to install the MPDL app.')
+                },
+                'authorize': {
+                    'url': self.get_app_authorize_url(request),
+                    'link_label': _('Authorize App'),
+                    'link_help_text': _('To connect to GitHub repos, you first need to authorize the MPDL app.')
+                },
+                'update': {
+                    'url': self.get_app_config_url(request, installation_id),
+                    'link_label': _('Update list'),
+                    'link_help_text': _('List of your accessible GitHub repositories (up to 10 repos will be shown here).')
+                }
+            }
+            # check if app was already installed and authorized, otherwise update repo access
+            repo_choices = self.get_repo_choices(request, installation_id)
+            action = 'install' if installation_id is None else ('authorize' if access_token is None else 'update')
+            url, link_label, link_help_text = app_actions[action].values()
+            repo_help_text = mark_safe(f'{link_help_text} <a href="{url}">{link_label}</a>') if url is not None else ''
 
         else:
             repo_choices = None
