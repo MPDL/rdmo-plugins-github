@@ -37,7 +37,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export):
             installation_id = self.get_from_session(self.request, 'installation_id')
             access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
             if installation_id is None or access_token is None:
-                return self.authorize(self.request)
+                return self.authorize(self.request, installation_id)
         
         new_repo_name_display = None
         repo_display = 'block'
@@ -72,7 +72,14 @@ class GitHubExportProvider(GitHubProviderMixin, Export):
             if new_repo:
                 return self.make_request(self.request, 'post', url, json=request_data[0])
             else:
-                return self.make_request(self.request, 'put', url, json=request_data[0], data_processing_params={'project_id': self.project.id})
+                return self.make_request(
+                    self.request, 
+                    'put', 
+                    url, 
+                    json=request_data[0], 
+                    apply_data_processing=True, 
+                    data_processing_params={'project_id': self.project.id}
+                )
 
         new_repo_name_display = 'block' if form.cleaned_data['new_repo'] else None
         repo_display = None if form.cleaned_data['new_repo'] else 'block'
@@ -255,115 +262,95 @@ class GitHubExportProvider(GitHubProviderMixin, Export):
         return render(request, 'plugins/github_export_success.html', context, status=200)
 
 
-# class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
-#     add_label = _('Add GitHub integration')
-#     send_label = _('Send to GitHub')
-#     description = _('This integration allows the creation of issues in arbitrary GitHub repositories. '
-#                     'The upload of attachments is not supported by GitHub.')
-#     repo_url = {
-#         'key': 'repo_url',
-#         'placeholder': 'https://github.com/username/repo',
-#         'help': _('The URL of the GitHub repository to send issues to.')
-#     }
-#     secret = {
-#         'key': 'secret',
-#         'placeholder': 'Secret (random) string',
-#         'help': _('The secret for a GitHub webhook to close a task (optional).'),
-#         'required': False,
-#         'secret': True
-#     }
-
-#     def get_post_url(self, request, issue, integration, subject, message, attachments):
-#         repo_url = integration.get_option_value('repo_url')
-#         if repo_url:
-#             repo = repo_url.replace('https://github.com', '').strip('/')
-#             return f'https://api.github.com/repos/{repo}/issues'
-
-#     def get_post_data(self, request, issue, integration, subject, message, attachments):
-#         return {
-#             'title': subject,
-#             'body': message
-#         }
-
-#     def get_issue_url(self, response):
-#         return response.json().get('html_url')
-
-#     def webhook(self, request, integration):
-#         secret = integration.get_option_value('secret')
-#         header_signature = request.headers.get('X-Hub-Signature')
-
-#         if (secret is not None) and (header_signature is not None):
-#             body_signature = 'sha1=' + hmac.new(secret.encode(), request.body, 'sha1').hexdigest()
-
-#             if hmac.compare_digest(header_signature, body_signature):
-#                 try:
-#                     payload = json.loads(request.body.decode())
-#                     action = payload.get('action')
-#                     issue_url = payload.get('issue', {}).get('html_url')
-
-#                     if action and issue_url:
-#                         try:
-#                             issue_resource = integration.resources.get(url=issue_url)
-#                             if action == 'closed':
-#                                 issue_resource.issue.status = issue_resource.issue.ISSUE_STATUS_CLOSED
-#                             else:
-#                                 issue_resource.issue.status = issue_resource.issue.ISSUE_STATUS_IN_PROGRESS
-
-#                             issue_resource.issue.save()
-#                         except ObjectDoesNotExist:
-#                             pass
-
-#                     return HttpResponse(status=200)
-
-#                 except json.decoder.JSONDecodeError as e:
-#                     return HttpResponse(e, status=400)
-
-#         raise Http404
-
-#     @property
-#     def fields(self):
-#         return [self.repo_url, self.secret]
+class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
+    add_label = _('Add GitHub integration')
+    send_label = _('Send to GitHub')
+    description = _('This integration allows the creation of issues in arbitrary GitHub repositories. '
+                    'The upload of attachments is not supported by GitHub.')
     
-#     @fields.setter
-#     def fields(self, new_fields):
-#         if new_fields is not None:
-#             self.repo_url = new_fields[0]
-#             self.secret = new_fields[1]
+    _fields = {
+        'repo_url': {
+            'key': 'repo_url',
+            'placeholder': 'https://github.com/username/repo',
+            'help': _('The URL of the GitHub repository to send issues to.')
+        },
+        'secret': {
+            'key': 'secret',
+            'placeholder': 'Secret (random) string',
+            'help': _('The secret for a GitHub webhook to close a task (optional).'),
+            'required': False,
+            'secret': True
+        }
+    }
+    
+    def get_post_url(self, request, issue, integration, subject, message, attachments):
+        repo_url = integration.get_option_value('repo_url')
+        if repo_url:
+            repo = repo_url.replace('https://github.com', '').strip('/')
+            return f'https://api.github.com/repos/{repo}/issues'
 
-#     def integration_setup(self, request, *args, **kwargs):
+    def get_post_data(self, request, issue, integration, subject, message, attachments):
+        return {
+            'title': subject,
+            'body': message
+        }
 
-#         if APP_TYPE == 'github_app':
-#             self.process_app_context(request, **kwargs)
+    def get_issue_url(self, response):
+        return response.json().get('html_url')
 
-#             installation_id = self.get_from_session(request, 'installation_id')
-#             access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
-#             # check if app was already installed
-#             if installation_id is None:
-#                 state = self.get_state(request)
-#                 installation_url = self.install_url + '?' + urlencode(self.get_install_params(state))
-#                 repo_choices = []
-#                 link_label = _('Install App')
-#                 link_help_text = _('To connect to GitHub repos, you first need to install the MPDL app.')
-#                 repo_help_text = mark_safe(f'{link_help_text} <a href="{installation_url}">{link_label}</a>')
-#             # Check if app was already authorized
-#             elif access_token is None:
-#                 state = self.get_state(request)
-#                 authorization_url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
-#                 repo_choices = []
-#                 link_label = _('Authorize App')
-#                 link_help_text = _('To connect to GitHub repos, you first need to authorize the MPDL app.')
-#                 repo_help_text = mark_safe(f'{link_help_text} <a href="{authorization_url}">{link_label}</a>')
-#             # get repo choices and app link to update them
-#             else:
-#                 repo_choices, repo_help_text = self.get_repo_form_field_data(request)
+    def webhook(self, request, integration):
+        secret = integration.get_option_value('secret')
+        header_signature = request.headers.get('X-Hub-Signature')
 
-#             github_app_repo_url = {**self.repo_url}
-#             github_app_repo_url['widget'] = forms.RadioSelect(choices=repo_choices)
-#             github_app_repo_url['help'] = repo_help_text
+        if (secret is not None) and (header_signature is not None):
+            body_signature = 'sha1=' + hmac.new(secret.encode(), request.body, 'sha1').hexdigest()
 
-#             self.repo_url = github_app_repo_url
+            if hmac.compare_digest(header_signature, body_signature):
+                try:
+                    payload = json.loads(request.body.decode())
+                    action = payload.get('action')
+                    issue_url = payload.get('issue', {}).get('html_url')
 
-#             return self.fields
+                    if action and issue_url:
+                        try:
+                            issue_resource = integration.resources.get(url=issue_url)
+                            if action == 'closed':
+                                issue_resource.issue.status = issue_resource.issue.ISSUE_STATUS_CLOSED
+                            else:
+                                issue_resource.issue.status = issue_resource.issue.ISSUE_STATUS_IN_PROGRESS
+
+                            issue_resource.issue.save()
+                        except ObjectDoesNotExist:
+                            pass
+
+                    return HttpResponse(status=200)
+
+                except json.decoder.JSONDecodeError as e:
+                    return HttpResponse(e, status=400)
+
+        raise Http404
+
+    @property
+    def fields(self):
+        return self._fields.values()
+    
+    @fields.setter
+    def fields(self, new_fields):        
+        if isinstance(new_fields, dict):
+            for k, v in new_fields.items():
+                self._fields[k] = v
+
+    def integration_setup(self, request):
+        if APP_TYPE == 'github_app':
+            redirect_url = request.build_absolute_uri()
+            self.process_app_context(request, redirect_url=redirect_url)
+            repo_choices, repo_help_text = self.get_repo_form_field_data(request)
+
+            github_app_repo_url = {**self._fields['repo_url']}
+            github_app_repo_url['widget'] = forms.RadioSelect(choices=repo_choices)
+            github_app_repo_url['help'] = repo_help_text
+
+            self.fields = {'repo_url': github_app_repo_url}
 
 
 class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
@@ -376,7 +363,7 @@ class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
             installation_id = self.get_from_session(self.request, 'installation_id')
             access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
             if installation_id is None or access_token is None:
-                return self.authorize(self.request)
+                return self.authorize(self.request, installation_id)
         
         repo_display = 'block'
         other_repo_display = None
