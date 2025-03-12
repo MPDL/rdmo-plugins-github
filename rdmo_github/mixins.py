@@ -176,7 +176,6 @@ class GitHubAppProviderMixin(OauthProviderMixin):
     def get_state(self, request):
         state = get_random_string(length=32)
         self.store_in_session(request, 'state', state)
-
         return state
     
     def process_app_context(self, request, *args, **kwargs):
@@ -213,15 +212,14 @@ class GitHubAppProviderMixin(OauthProviderMixin):
 
         return url
     
-    def get_repo_choices(self, request, installation_id):
-        if installation_id is None: return []
+    def get_repo_choices(self, installation_id, access_token):
+        if installation_id is None or access_token is None: return []
 
         url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
                 api_url=self.api_url,
                 installation_id=installation_id,
                 per_page=10
             )
-        access_token = self.get_from_session(request, 'access_token')
         response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
 
         try:
@@ -285,25 +283,29 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
             access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
             app_actions = {
                 'install': {
-                    'url': self.get_app_install_url(request),
+                    'url_function': self.get_app_install_url,
+                    'url_kwargs': {'request': request},
                     'link_label': _('Install App'),
                     'link_help_text': _('To connect to GitHub repos, you first need to install the MPDL app.')
                 },
                 'authorize': {
-                    'url': self.get_app_authorize_url(request),
+                    'url_function': self.get_app_authorize_url,
+                    'url_kwargs': {'request': request},
                     'link_label': _('Authorize App'),
                     'link_help_text': _('To connect to GitHub repos, you first need to authorize the MPDL app.')
                 },
                 'update': {
-                    'url': self.get_app_config_url(request, installation_id),
+                    'url_function': self.get_app_config_url, 
+                    'url_kwargs': {'request': request, 'installation_id': installation_id},
                     'link_label': _('Update list'),
                     'link_help_text': _('List of your accessible GitHub repositories (up to 10 repos will be shown here).')
                 }
             }
             # check if app was already installed and authorized, otherwise update repo access
-            repo_choices = self.get_repo_choices(request, installation_id)
+            repo_choices = self.get_repo_choices(installation_id, access_token)
             action = 'install' if installation_id is None else ('authorize' if access_token is None else 'update')
-            url, link_label, link_help_text = app_actions[action].values()
+            url_function, url_kwargs, link_label, link_help_text = app_actions[action].values()
+            url = url_function(**url_kwargs)
             repo_help_text = mark_safe(f'{link_help_text} <a href="{url}">{link_label}</a>') if url is not None else ''
 
         else:
