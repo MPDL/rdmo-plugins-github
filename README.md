@@ -1,10 +1,11 @@
 rdmo-plugins-github
 ===========
 
-This repo implements two plugins for [RDMO](https://github.com/rdmorganiser/rdmo):
+This repo implements three plugins for [RDMO](https://github.com/rdmorganiser/rdmo):
 
 * an [issue provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#issue-providers), which lets users push their tasks from RDMO to GitHub issues.
 * a [project import plugins](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private)repos.
+* an export plugin for smp projects, which can be used to reuse their data and export it to (public or private) repos.
 
 The plugin uses [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
 
@@ -37,11 +38,21 @@ PROJECT_ISSUE_PROVIDERS += [
 ]
 ```
 
-For the import, add the plugin to `PROJECT_IMPORTS` in `config/settings/local.py`:
+For the import, add the plugin to `PROJECT_IMPORTS` and `PROJECT_IMPORTS_LIST` in `config/settings/local.py`:
 
 ```python
 PROJECT_IMPORTS = [
     ('github', _('Import from GitHub'), 'rdmo_github.providers.GitHubImport'),
+]
+
+PROJECT_IMPORTS_LIST += ['github']
+```
+
+For the export, add the plugin to `PROJECT_EXPORTS` in `config/settings/local.py`:
+
+```python
+PROJECT_EXPORTS += [
+    ('github', _('Github'), 'rdmo_github.providers.GitHubExportProvider'),
 ]
 ```
 
@@ -57,4 +68,8 @@ Additionally, a secret can be added to enable GitHub to communicate to RDMO when
 
 ### Project import
 
-Users can import project import files directly from a public or private GitHub repository.
+Users can import project files directly from a public or private GitHub repository.
+
+### Project data export
+
+Users can export different files (readme, citation, license) created with the smp project's data. They can choose to export to an existing repository or to create a new one.
