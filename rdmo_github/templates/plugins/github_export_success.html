@@ -5,14 +5,12 @@
 {% block page %}
 
     <h1>{% trans 'Successful Export to GitHub' %}</h1>
-
-    {% if successful_uploads %}
-        <ul>
-        {% for option in successful_uploads %}
-            <li>{{ option.export_format }}: {{ option.success|yesno:_('successfully exported,could not be exported') }}</li>
+    
+    <ul>
+        {% for export in processed_exports %}
+            <li>{{ export.label }}: {{ export.processing_status }}</li>
         {% endfor %}
-        </ul>
-    {% endif %}
+    </ul>
 
     <a href="{{ repo_html_url }}">{% trans 'Go to GitHub repo' %}</a>
 

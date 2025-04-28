@@ -1,26 +1,20 @@
 {% extends 'core/page.html' %}
 {% load i18n %}
 {% load core_tags %}
+{% load compress %}
 {% load static %}
+
+{% block head %}
+    {% compress js %}
+    <script type="text/javascript" src="{% static 'plugins/js/github_export_form.js' %}" ></script>
+    {% endcompress %}
+{% endblock %}
 
 {% block page %}
 
     <h1>{% blocktrans %}Export to GitHub{% endblocktrans %}</h1>
 
-    {% bootstrap_form submit=_('Export to GitHub') %}
-
-    <script src="{% static 'common_script_functions.js' %}"></script>
-    
-    <script>
-        function select_all_export_options(option_count) {
-            var checkBox = document.getElementById("id_all_export_options");
-
-            for (let i=0; i<option_count; i++) {
-                var option = document.getElementById(`id_export_options_${i}`);
-                option.checked = checkBox.checked
-            }
-        }
-    </script>
+    {% bootstrap_form submit=submit_label %}
 
     <style>
         .form-group.field-new_repo_name {
