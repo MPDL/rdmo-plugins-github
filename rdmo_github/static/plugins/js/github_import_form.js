@@ -4,10 +4,10 @@ function toggleRepoFields(checkbox_id, checked_collection_class, unchecked_colle
     var uncheckedCollection = document.getElementsByClassName(unchecked_collection_class);
     
     if (checkBox.checked == true){
-        checkedCollection[0].style.display = "block";
-        uncheckedCollection[0].style.display = "none";
+        checkedCollection[0].style.display = 'block';
+        uncheckedCollection[0].style.display = 'none';
     } else {
-        checkedCollection[0].style.display = "none";
-        uncheckedCollection[0].style.display = "block";
+        checkedCollection[0].style.display = 'none';
+        uncheckedCollection[0].style.display = 'block';
     }
 }
