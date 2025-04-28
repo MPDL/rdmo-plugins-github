@@ -22,14 +22,125 @@ class GitHubAppProviderMixin(OauthProviderMixin):
     GITHUB_APP_NAME = settings.GITHUB_PROVIDER['github_app_name']
     install_url = f'https://github.com/apps/{GITHUB_APP_NAME}/installations/new'
 
+    def get_install_params(self, state):
+        return {
+            'client_id': self.client_id,
+            'state': state
+        }
+    
+    def get_app_config_url(self, request, installation_id):        
+        if installation_id is None: return
+
+        # get random state and store in session
+        state = self.get_state(request)
+        url = f'https://github.com/settings/installations/{installation_id}' + '?' + urlencode({'state': state})
+
+        return url
+    
+    def get_app_install_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.install_url + '?' + urlencode(self.get_install_params(state))
+
+        return url
+    
+    def get_repo_choices(self, installation_id, access_token):
+        if installation_id is None or access_token is None: return []
+
+        url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
+                api_url=self.api_url,
+                installation_id=installation_id,
+                per_page=10
+            )
+        response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
+
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            logger.error('error requesting github app repo list: %s (%s)', response.content, response.status_code)
+            raise e
+
+        github_repos = [r.get('html_url') for r in response.json().get('repositories', [])]
+
+        repo_choices = [(r, r) for r in github_repos]
+
+        return repo_choices
+    
+    
+class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" else OauthProviderMixin):
+    authorize_url = 'https://github.com/login/oauth/authorize'
+    token_url = 'https://github.com/login/oauth/access_token'
+    api_url = 'https://api.github.com'
+
     PROVIDER_TYPES = [
         'PROJECT_ISSUE_PROVIDERS',
         'PROJECT_EXPORTS',
         'PROJECT_IMPORTS'
     ]
 
-    def authorize(self, request, installation_id):
-        if installation_id is None:
+    @property
+    def client_id(self):
+        return settings.GITHUB_PROVIDER['client_id']
+
+    @property
+    def client_secret(self):
+        return settings.GITHUB_PROVIDER['client_secret']
+
+    @property
+    def redirect_path(self):
+        return reverse('oauth_callback', args=['github'])
+
+    def get_authorization_headers(self, access_token):
+        return {
+            'Authorization': f'token {access_token}',
+            'Accept': 'application/vnd.github+json'
+        }
+
+    def get_authorize_params(self, request, state):
+        return {
+            'client_id': self.client_id,
+            'redirect_uri': request.build_absolute_uri(self.redirect_path),
+            'scope': 'repo',
+            'state': state
+        }
+
+    def get_callback_params(self, request):
+        return {
+            'token_url': self.token_url,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'code': request.GET.get('code')
+        }
+    
+    def get_error_message(self, response):
+        return response.json().get('message')
+    
+    def process_app_context(self, request, *args, **kwargs):
+        # pop state from all github providers
+        for provider_type in self.PROVIDER_TYPES:
+            provider = get_plugin(provider_type, 'github')
+            if provider:
+                provider.pop_from_session(request, 'state')
+
+        # save values in session
+        for k,v in kwargs.items():
+            self.store_in_session(request, k, v)
+    
+    def get_state(self, request):
+        state = get_random_string(length=32)
+        self.store_in_session(request, 'state', state)
+        return state
+    
+    def get_app_authorize_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
+
+        return url
+    
+    def authorize(self, request):
+        installation_id = self.get_from_session(request, 'installation_id')
+        if APP_TYPE == 'github_app' and installation_id is None:
             url = self.get_app_install_url(request)
         else:
             url = self.get_app_authorize_url(request)
@@ -46,7 +157,7 @@ class GitHubAppProviderMixin(OauthProviderMixin):
         
         # store installation id of github app
         installation_id = self.get_from_session(request, 'installation_id')
-        if installation_id is None:
+        if APP_TYPE == 'github_app' and installation_id is None:
             installation_id = request.GET.get('installation_id')
             for provider_type in self.PROVIDER_TYPES:
                 provider = get_plugin(provider_type, 'github')
@@ -74,21 +185,26 @@ class GitHubAppProviderMixin(OauthProviderMixin):
             self.store_in_session(request, 'access_token', access_token)
             self.store_in_session(request, 'refresh_token', response_data.get('refresh_token', None))
 
-        # github app installation or update, i.e. not when only authorizing
-        if setup_action == 'install' or setup_action == 'update':
-            redirect_url = self.pop_from_session(request, 'redirect_url')
-            if redirect_url is None:
-                return redirect('home')
-            return HttpResponseRedirect(redirect_url)
-        
-        # get request data from session
-        stored_request = self.pop_from_session(request, 'request')
-        if stored_request is None:
-            redirect_url = self.pop_from_session(request, 'redirect_url')
+        # After requesting new access_token or after github app installation or update
+        redirect_url = self.pop_from_session(request, 'redirect_url')
+        if redirect_url is not None:
             return HttpResponseRedirect(redirect_url)
 
+        # github app installation or update, i.e. not when only authorizing
+        # if APP_TYPE == 'github_app' and (setup_action == 'install' or setup_action == 'update'):
+        #     redirect_url = self.pop_from_session(request, 'redirect_url')
+        #     if redirect_url is None:
+        #         return redirect('home')
+        #     return HttpResponseRedirect(redirect_url)
+        
+        # # get request data from session
+        # stored_request = self.pop_from_session(request, 'request')
+        # if stored_request is None:
+        #     redirect_url = self.pop_from_session(request, 'redirect_url')
+        #     return HttpResponseRedirect(redirect_url)
+        
         try:
-            method, url, kwargs = stored_request
+            method, url, kwargs = self.pop_from_session(request, 'request')
             return self.make_request(request, method, url, **kwargs)
         except ValueError:
             pass
@@ -97,12 +213,6 @@ class GitHubAppProviderMixin(OauthProviderMixin):
             'title': _('GitHub callback error'),
             'errors': [_('No redirect could be found.')]
         }, status=200)
-
-    def get_install_params(self, state):
-        return {
-            'client_id': self.client_id,
-            'state': state
-        }
     
     def get_validate_headers(self):
         return {
@@ -162,120 +272,16 @@ class GitHubAppProviderMixin(OauthProviderMixin):
                 return
         except requests.HTTPError as e:
             logger.error('refresh token error: %s (%s)', response.content, response.status_code)
-            raise e
+            return
 
         response_data = response.json()
 
         # store new access token in session
         access_token = response_data.get('access_token')
         self.store_in_session(request, 'access_token', access_token)
-        self.store_in_session(request, 'refresh_token', response_data.get('refresh_token'))
+        self.store_in_session(request, 'refresh_token', response_data.get('refresh_token', None))
 
         return access_token
-    
-    def get_state(self, request):
-        state = get_random_string(length=32)
-        self.store_in_session(request, 'state', state)
-        return state
-    
-    def process_app_context(self, request, *args, **kwargs):
-        # pop state from all github providers
-        for provider_type in self.PROVIDER_TYPES:
-            provider = get_plugin(provider_type, 'github')
-            if provider:
-                provider.pop_from_session(request, 'state')
-
-        # save values in session
-        for k,v in kwargs.items():
-            self.store_in_session(request, k, v)
-    
-    def get_app_config_url(self, request, installation_id):        
-        if installation_id is None: return
-
-        # get random state and store in session
-        state = self.get_state(request)
-        url = f'https://github.com/settings/installations/{installation_id}' + '?' + urlencode({'state': state})
-
-        return url
-    
-    def get_app_install_url(self, request):
-        # get random state and store in session
-        state = self.get_state(request)
-        url = self.install_url + '?' + urlencode(self.get_install_params(state))
-
-        return url
-    
-    def get_app_authorize_url(self, request):
-        # get random state and store in session
-        state = self.get_state(request)
-        url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
-
-        return url
-    
-    def get_repo_choices(self, installation_id, access_token):
-        if installation_id is None or access_token is None: return []
-
-        url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
-                api_url=self.api_url,
-                installation_id=installation_id,
-                per_page=10
-            )
-        response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
-
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as e:
-            logger.error('error requesting github app repo list: %s (%s)', response.content, response.status_code)
-            raise e
-
-        github_repos = [r.get('html_url') for r in response.json().get('repositories', [])]
-
-        repo_choices = [(r, r) for r in github_repos]
-
-        return repo_choices
-    
-    
-class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" else OauthProviderMixin):
-    authorize_url = 'https://github.com/login/oauth/authorize'
-    token_url = 'https://github.com/login/oauth/access_token'
-    api_url = 'https://api.github.com'
-
-    @property
-    def client_id(self):
-        return settings.GITHUB_PROVIDER['client_id']
-
-    @property
-    def client_secret(self):
-        return settings.GITHUB_PROVIDER['client_secret']
-
-    @property
-    def redirect_path(self):
-        return reverse('oauth_callback', args=['github'])
-
-    def get_authorization_headers(self, access_token):
-        return {
-            'Authorization': f'token {access_token}',
-            'Accept': 'application/vnd.github+json'
-        }
-
-    def get_authorize_params(self, request, state):
-        return {
-            'client_id': self.client_id,
-            'redirect_uri': request.build_absolute_uri(self.redirect_path),
-            'scope': 'repo',
-            'state': state
-        }
-
-    def get_callback_params(self, request):
-        return {
-            'token_url': self.token_url,
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': request.GET.get('code')
-        }
-    
-    def get_error_message(self, response):
-        return response.json().get('message')
     
     def get_repo_form_field_data(self, request):
         if APP_TYPE == 'github_app':
@@ -315,11 +321,11 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
         return repo_choices, repo_help_text
 
     
-    def get_form(self, request, form, *args):
+    def get_form(self, request, form, *args, **kwargs):
         repo_choices, repo_help_text = self.get_repo_form_field_data(request)
-
         return form(
                 *args,
+                **kwargs,
                 repo_choices=repo_choices, 
                 repo_help_text=repo_help_text
             )
