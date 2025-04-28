@@ -1,0 +1,28 @@
+{% load i18n %}
+
+<div class="checkbox" >
+    <label style="width: 100%; display: flex; align-items: center;">
+        <span style="flex-grow: 1;">
+            {% with subwidget=widget.subwidgets.0 %}
+            {% include "django/forms/widgets/input.html" with widget=subwidget %}
+            {{ subwidget.label }}
+            {% endwith %}
+            <span 
+                id="id_exports_check_message_{{ index }}" 
+                style="color: {% if widget.option_in_repo == True %}red{% else %}green{% endif %}; margin-left: 0.5rem; display: {% if widget.option_in_repo == None %}none{% else %}inline{% endif %}; %}" >
+                {% if widget.option_in_repo == True %}File exists and will be overwritten{% elif widget.option_in_repo == False %}File does not exist yet{% else %}{% endif %}
+            </span>
+            </span>
+        <span id="id_exports_file_path_{{ index }}" style="width: 50%; align-items: center; display: {% if widget.selected %}flex{% else %}none{% endif %};" >
+            <span style="width: 70px;">{% trans 'File path' %}</span>
+            {% include "django/forms/widgets/input.html" with widget=widget.subwidgets.1 %}     
+        </span>
+    </label>
+</div>
+{% if widget.errors %}
+    <div class="help-block error">
+        {% for error in widget.errors %}
+        <p class="text-danger">* {{ error }}</p>
+        {% endfor %}
+    </div>
+{% endif %}
