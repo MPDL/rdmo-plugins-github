@@ -5,7 +5,7 @@ This repo implements three plugins for [RDMO](https://github.com/rdmorganiser/rd
 
 * an [issue provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#issue-providers), which lets users push their tasks from RDMO to GitHub issues.
 * a [project import plugins](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private)repos.
-* an export plugin for smp projects, which can be used to reuse their data and export it to (public or private) repos.
+* an export plugin, which can be used to export projects to (public or private) repos. For SMP projects, this plugin also provides other export choices that reuse project data (e.g. README, CITATION or LICENSE files).
 
 The plugin uses [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
 
@@ -48,12 +48,21 @@ PROJECT_IMPORTS = [
 PROJECT_IMPORTS_LIST += ['github']
 ```
 
-For the export, add the plugin to `PROJECT_EXPORTS` in `config/settings/local.py`:
+For the export:
+
+1. Add the plugin to `PROJECT_EXPORTS` in `config/settings/local.py`:
 
 ```python
 PROJECT_EXPORTS += [
     ('github', _('Github'), 'rdmo_github.providers.GitHubExportProvider'),
 ]
+```
+
+2. Install the helper plugin "MAUS" in your RDMO virtual environment using pip (directly from GitHub). MAUS provides the SMP specific export choices:
+
+```bash
+not working yet!!!!!!!!
+pip install git+https://github.com/MPDL/rdmo-plugins-maus
 ```
 
 
@@ -70,6 +79,6 @@ Additionally, a secret can be added to enable GitHub to communicate to RDMO when
 
 Users can import project files directly from a public or private GitHub repository.
 
-### Project data export
+### Project export
 
-Users can export different files (readme, citation, license) created with the smp project's data. They can choose to export to an existing repository or to create a new one.
+Users can export project import files directly to a public or private GitLab repository. For SMP projects, they can also export custom files (README, CITATION, LICENSE) created with the SMP project's data. They can choose to export to an existing repository or to create a new one.
