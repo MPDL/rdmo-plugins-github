@@ -13,54 +13,13 @@ from rdmo.views.models import View
 
 logger = logging.getLogger(__name__)
 
-attribute_uri_prefix = "https://dev-rdmo.int.mpdl.mpg.de/terms"
+attribute_uri_prefix = "https://rdmo.mpdl.mpg.de/terms"
 attribute_sha_uri_key_prefix = "project/metadata/publication/github/sha/"
-
-def get_project_licenses(project):
-    # https://github.com/spdx/license-list-data
-    attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/software-license')
-    spdx_ids = [license.value for license in project.values.filter(attribute=attribute)]
-    
-    license_contents = []
-    for id in spdx_ids:
-        url = 'https://api.github.com/repos/spdx/license-list-data/contents/text/{spdx_id}.txt'.format(spdx_id=id)        
-        response = requests.get(url, headers={'Accept': 'application/vnd.github+json'})
-        try:
-            response.raise_for_status()
-            base64_string_of_content = response.json().get('content')
-            license_contents.append({
-                'content': base64_string_of_content,
-                'path': f'contents/LICENSE-{id}',
-                'export_format': f'license-{id.lower()}'
-            })
-        except:
-            continue
-        
-    return license_contents
-
 
 def get_optionset_elements_with_uri(uri):
     optionset_options = OptionSet.objects.get(uri=uri).elements
     return [(option.uri_path, option.text) for option in optionset_options]
 
-
-def render_project_views(project, snapshot, attachments_format, view_uri):
-    view = View.objects.get(uri=view_uri)
-
-    try:
-        rendered_view = view.render(project, snapshot)
-    except TemplateSyntaxError:
-        return HttpResponse()
-
-    return render_to_format(
-        None, attachments_format, project.title, 'projects/project_view_export.html', {
-            'format': attachments_format,
-            'title': project.title,
-            'view': view,
-            'rendered_view': rendered_view,
-            'resource_path': get_value_path(project, snapshot)
-        }
-    )
 
 def get_project_value_with_record_id(project, export_format):
     record_id_attribute, _created = Attribute.objects.get_or_create(uri_prefix=attribute_uri_prefix,
