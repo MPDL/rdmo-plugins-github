@@ -10,7 +10,7 @@
             <span 
                 id="id_exports_check_message_{{ index }}" 
                 style="color: {% if widget.option_in_repo == True %}red{% else %}green{% endif %}; margin-left: 0.5rem; display: {% if widget.option_in_repo == None %}none{% else %}inline{% endif %}; %}" >
-                {% if widget.option_in_repo == True %}File exists and will be overwritten{% elif widget.option_in_repo == False %}File does not exist yet{% else %}{% endif %}
+                {% if widget.option_in_repo == True %}{% trans 'File exists and will be overwritten' %}{% elif widget.option_in_repo == False %}{% trans 'File does not exist yet' %}{% else %}{% endif %}
             </span>
             </span>
         <span id="id_exports_file_path_{{ index }}" style="width: 50%; align-items: center; display: {% if widget.selected %}flex{% else %}none{% endif %};" >

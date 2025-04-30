@@ -3,20 +3,18 @@ import hmac
 import json
 import logging
 import requests
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
-from django.utils.safestring import mark_safe
 
 from rdmo.core.imports import handle_fetched_file
 from rdmo.core.plugins import get_plugin
 from rdmo.projects.imports import RDMOXMLImport
-# from rdmo.projects.models.project import Project
 from rdmo.projects.providers import OauthIssueProvider
 # from rdmo.projects.exports import Export
 
@@ -65,15 +63,6 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
         access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
         if access_token is None:
             return self.authorize(self.request)
-        
-        # if APP_TYPE == 'github_app':
-        #     redirect_url = self.request.build_absolute_uri()
-        #     self.process_app_context(self.request, redirect_url=redirect_url)
-
-        #     # installation_id = self.get_from_session(self.request, 'installation_id')
-        #     access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
-        #     if installation_id is None or access_token is None:
-        #         return self.authorize(self.request, installation_id)
         
         context = {
             'new_repo_name_display': 'none',
@@ -185,7 +174,7 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
             choice_key, file_path = e.split(',')
             url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
                 api_url=self.api_url,
-                repo=quote(repo.replace('https://github.com/', '')),
+                repo=quote(repo.removesuffix('/').replace('https://github.com/', '')),
                 path=quote(file_path, safe=''),
                 ref=quote(branch, safe='')
             )
@@ -239,7 +228,7 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
 
             repo = 'repo_placeholder'
         else:
-            repo = quote(form_data['repo'].replace('https://github.com/', ''))    
+            repo = quote(form_data['repo'].removesuffix('/').replace('https://github.com/', ''))    
             repo_html_url = 'https://github.com/{repo}'.format(repo=repo)
 
         # EXPORT OPTIONS
@@ -383,7 +372,7 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
         if repo_url:
-            repo = repo_url.replace('https://github.com', '').strip('/')
+            repo = repo_url.removesuffix('/').replace('https://github.com', '').strip('/')
             return f'https://api.github.com/repos/{repo}/issues'
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
@@ -502,9 +491,9 @@ class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
     def process_form_data(self, form_data):
         other_repo_check  = form_data['other_repo_check']
         if other_repo_check and APP_TYPE == 'github_app':
-            repo = quote(form_data['other_repo'].replace('https://github.com/', ''))
+            repo = quote(form_data['other_repo'].removesuffix('/').replace('https://github.com/', ''))
         else:
-            repo = quote(form_data['repo'].replace('https://github.com/', ''))
+            repo = quote(form_data['repo'].removesuffix('/').replace('https://github.com/', ''))
 
         url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
             api_url=self.api_url,
