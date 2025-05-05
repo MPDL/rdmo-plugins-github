@@ -379,7 +379,7 @@ class GitHubImportForm(GithubBaseForm):
         repo = self.cleaned_data.get('repo')
 
         if other_repo_check and other_repo == '':
-            self.add_error('other_repo', ValidationError(_('A GitHub repository link is required')))
+            self.add_error('other_repo', ValidationError(_('A GitHub repository is required')))
         
         if not other_repo_check and repo == '':
             self.add_error('repo', ValidationError(_('A GitHub repository is required')))
