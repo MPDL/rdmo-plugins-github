@@ -86,13 +86,14 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
             # 1. Check file paths to warn user if repo files will be overwritten
             choices_to_update = self.get_from_session(self.request, 'github_export_choices_to_update')
             if not new_repo and choices_to_update is None:
-                choices_to_update, checked_export_choices = self.check_file_paths(
+                choices_to_update, checked_export_choices, checked_branch = self.check_file_paths(
                     form.cleaned_data['exports'], 
                     form.cleaned_data['repo'], 
                     form.cleaned_data['branch']
                 )
                 self.store_in_session(self.request, 'github_export_choices_to_update', choices_to_update)
                 self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
+                self.store_in_session(self.request, 'github_checked_branch', checked_branch)
                 
                 selected_choices = [c for c in self.export_choices if c[1][1] in choices_to_update.keys()]
                 form = self.get_form(
@@ -174,7 +175,7 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
             choice_key, file_path = e.split(',')
             url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
                 api_url=self.api_url,
-                repo=quote(repo.removesuffix('/').replace('https://github.com/', '')),
+                repo=quote(repo.replace('https://github.com/', '').strip('/')),
                 path=quote(file_path, safe=''),
                 ref=quote(branch, safe='')
             )
@@ -183,7 +184,7 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
             choice_in_repo = True if sha is not None else False
             choices_to_update[choice_key] = choice_in_repo
 
-        return choices_to_update, exports
+        return choices_to_update, exports, branch
 
     def render_export(self, choice_key):
         smp_exports = getattr(self, 'smp_exports', None)
@@ -212,13 +213,14 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
         return choice_content
     
     def process_form_data(self, form_data, choices_to_update, update_without_warning=False):
+        # print('process_form_data()')
         request_data = []
 
         # REPO
         new_repo  = form_data['new_repo']
         repo_html_url = None
         if new_repo:
-            new_repo_name = quote(form_data['new_repo_name'])
+            new_repo_name = quote(form_data['new_repo_name'], safe='')
             url = f'{self.api_url}/user/repos'
             request_data.append({
                 'name': new_repo_name,
@@ -228,19 +230,25 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
 
             repo = 'repo_placeholder'
         else:
-            repo = quote(form_data['repo'].removesuffix('/').replace('https://github.com/', ''))    
+            repo = quote(form_data['repo'].replace('https://github.com/', '').strip('/'))    
             repo_html_url = 'https://github.com/{repo}'.format(repo=repo)
 
         # EXPORT OPTIONS
-        checked_export_choices = self.get_from_session(self.request, 'github_checked_export_choices')
+        checked_export_choices = self.pop_from_session(self.request, 'github_checked_export_choices')
+        checked_branch = self.pop_from_session(self.request, 'github_checked_branch')
         exports = form_data['exports']
         processed_exports = []
         for e in exports:
             choice_key, file_path = e.split(',')
-            # print(f'    choice_key: {choice_key}, file_path: {file_path}')
+            # # print(f'    choice_key: {choice_key}, file_path: {file_path}')
             initial_file_path = file_path if new_repo else next((exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key), file_path)
-            if file_path != initial_file_path:
-                new_choices_to_update, __ = self.check_file_paths([e], form_data['repo'], form_data['branch'])
+            initial_branch = 'main' if new_repo else checked_branch
+            branch = 'main' if new_repo else form_data['branch']
+            if file_path != initial_file_path or branch != initial_branch:
+                # print('checking file paths before exporting')
+                # print(f'    file_path: {file_path}, initial_file_path: {initial_file_path}')
+                # print(f'    branch: {branch}, initial_branch: {initial_branch}')
+                new_choices_to_update, __, ___ = self.check_file_paths([e], form_data['repo'], branch)
                 choices_to_update[choice_key] = new_choices_to_update[choice_key]
                 if new_choices_to_update[choice_key] == True and not update_without_warning:
                     processed_exports.append({
@@ -266,7 +274,7 @@ class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
                 choice_request_data = {
                     'message': quote(form_data['commit_message'], safe=' '),
                     'content': content,
-                    'branch': quote(form_data['branch'], safe=''),
+                    'branch': quote(branch, safe=''),
                     'url': url,
                     'choice_key': choice_key
                 }
@@ -372,7 +380,7 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
         if repo_url:
-            repo = repo_url.removesuffix('/').replace('https://github.com', '').strip('/')
+            repo = quote(repo_url.replace('https://github.com', '').strip('/'))
             return f'https://api.github.com/repos/{repo}/issues'
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
@@ -427,28 +435,38 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
                 self._fields[k] = v
 
     def integration_setup(self, request):
-        if APP_TYPE == 'github_app':
-            redirect_url = request.build_absolute_uri()
-            self.process_app_context(request, redirect_url=redirect_url)
-            repo_choices, repo_help_text = self.get_repo_form_field_data(request)
+        redirect_url = request.build_absolute_uri()
+        self.process_app_context(request, redirect_url=redirect_url)
+        mininum_repo_permission = 'triage'
+        repo_choices, repo_help_text = self.get_repo_form_field_data(request, mininum_repo_permission)
 
-            github_app_repo_url = {**self._fields['repo_url']}
+        github_app_repo_url = {**self._fields['repo_url']}
+        if repo_choices is not None:
             github_app_repo_url['widget'] = forms.RadioSelect(choices=repo_choices)
+            
+        if repo_help_text is not None:
             github_app_repo_url['help'] = repo_help_text
 
-            self.fields = {'repo_url': github_app_repo_url}
+        self.fields = {'repo_url': github_app_repo_url}
 
 
 class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
 
     def render(self):
-        if APP_TYPE == 'github_app':
-            redirect_url = self.request.build_absolute_uri()
-            self.process_app_context(self.request, redirect_url=redirect_url)
+        redirect_url = self.request.build_absolute_uri()
+        self.process_app_context(self.request, redirect_url=redirect_url)
+        
+        access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
+        if access_token is None:
+            return self.authorize(self.request)
+        
+        # if APP_TYPE == 'github_app':
+        #     redirect_url = self.request.build_absolute_uri()
+        #     self.process_app_context(self.request, redirect_url=redirect_url)
 
-            access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
-            if access_token is None:
-                return self.authorize(self.request)
+        #     access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
+        #     if access_token is None:
+        #         return self.authorize(self.request)
         
         context = {
             'source_title': 'GitHub',
@@ -472,7 +490,7 @@ class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
             self.request.session['import_source_title'] = self.source_title = form.cleaned_data['path']
 
             url = self.process_form_data(form.cleaned_data)
-
+            # print(f'url: {url}')
             return self.make_request(self.request, 'get', url)
 
         other_repo_check = True if 'other_repo_check' in form.data else False
@@ -490,10 +508,10 @@ class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
     
     def process_form_data(self, form_data):
         other_repo_check  = form_data['other_repo_check']
-        if other_repo_check and APP_TYPE == 'github_app':
-            repo = quote(form_data['other_repo'].removesuffix('/').replace('https://github.com/', ''))
+        if other_repo_check:
+            repo = quote(form_data['other_repo'].replace('https://github.com/', '').strip('/'))
         else:
-            repo = quote(form_data['repo'].removesuffix('/').replace('https://github.com/', ''))
+            repo = quote(form_data['repo'].replace('https://github.com/', '').strip('/'))
 
         url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
             api_url=self.api_url,
