@@ -50,3 +50,14 @@ function hide_check_message(element) {
         check_message_span.style.display = 'none';
     }, duration);
 }
+
+function hide_check_messages(element, choice_count) {
+    var duration = 1000;
+    clearTimeout(element._timer);
+    element._timer = setTimeout(()=>{
+        for (let i=0; i<choice_count; i++) {
+            var choice_check_message_span = document.getElementById(`id_exports_check_message_${i}`);
+            choice_check_message_span.style.display = 'none';
+        }
+    }, duration);
+}

@@ -14,15 +14,13 @@
 
     {{ block.super }}
 
-    <style>
-        .form-group.field-other_repo_check {
-            display: {% if app_type == 'github_app' %}block {% else %}none {% endif %};
-        }
-        .form-group.field-repo {
-            display: {{ repo_display }};
-        }
+    <style>        
         .form-group.field-other_repo {
             display: {{ other_repo_display }};
+        }
+        
+        .form-group.field-repo {
+            display: {{ repo_display }};
         }
     </style>
 
