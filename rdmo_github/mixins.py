@@ -44,28 +44,6 @@ class GitHubAppProviderMixin(OauthProviderMixin):
 
         return url
     
-    def get_repo_choices(self, installation_id, access_token):
-        if installation_id is None or access_token is None: return []
-
-        url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
-                api_url=self.api_url,
-                installation_id=installation_id,
-                per_page=10
-            )
-        response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
-
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as e:
-            logger.error('error requesting github app repo list: %s (%s)', response.content, response.status_code)
-            raise e
-
-        github_repos = [r.get('html_url') for r in response.json().get('repositories', [])]
-
-        repo_choices = [(r, r) for r in github_repos]
-
-        return repo_choices
-    
     
 class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" else OauthProviderMixin):
     authorize_url = 'https://github.com/login/oauth/authorize'
@@ -189,19 +167,6 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
         redirect_url = self.pop_from_session(request, 'redirect_url')
         if redirect_url is not None:
             return HttpResponseRedirect(redirect_url)
-
-        # github app installation or update, i.e. not when only authorizing
-        # if APP_TYPE == 'github_app' and (setup_action == 'install' or setup_action == 'update'):
-        #     redirect_url = self.pop_from_session(request, 'redirect_url')
-        #     if redirect_url is None:
-        #         return redirect('home')
-        #     return HttpResponseRedirect(redirect_url)
-        
-        # # get request data from session
-        # stored_request = self.pop_from_session(request, 'request')
-        # if stored_request is None:
-        #     redirect_url = self.pop_from_session(request, 'redirect_url')
-        #     return HttpResponseRedirect(redirect_url)
         
         try:
             method, url, kwargs = self.pop_from_session(request, 'request')
@@ -283,46 +248,95 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
 
         return access_token
     
-    def get_repo_form_field_data(self, request):
+    def get_repo_choices(self, access_token, installation_id, minimum_repo_permission):
+        if access_token is None: return []
+
         if APP_TYPE == 'github_app':
-            installation_id = self.get_from_session(request, 'installation_id')
-            access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
-            app_actions = {
+            url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
+                    api_url=self.api_url,
+                    installation_id=installation_id,
+                    per_page=10
+                )
+        else:
+            url = '{api_url}/user/repos?per_page={per_page}&sort={sort}'.format(
+                    api_url=self.api_url,
+                    per_page=10,
+                    sort='updated'
+                )
+            # print(f'url: {url}')
+        
+        response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            # logger.error('error requesting github app repo list: %s (%s)', response.content, response.status_code)
+            logger.error('error requesting github repo list: %s (%s)', response.content, response.status_code)
+            raise e
+
+        if APP_TYPE == 'github_app':
+            # print('repo permissions: ')
+            # print([{'repo': r.get('html_url'), 'p': r.get('permissions')} for r in response.json().get('repositories', [])])
+            repos = [r.get('html_url') for r in response.json().get('repositories', []) if r.get('permissions', {}).get(minimum_repo_permission) == True]
+        else:
+            # print('repo permissions: ')
+            # print([{'repo': r.get('html_url'), 'p': r.get('permissions')} for r in response.json()])
+            repos = [r.get('html_url') for r in response.json() if r.get('permissions', {}).get(minimum_repo_permission) == True]
+
+        repo_choices = [(r, r) for r in repos]
+        # print(f'    repo_choices: {repo_choices}')
+
+        return repo_choices
+    
+    def get_repo_form_field_data(self, request, minimum_repo_permission):
+        access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
+        installation_id = self.get_from_session(request, 'installation_id')
+        repo_choices = self.get_repo_choices(access_token, installation_id, minimum_repo_permission)
+        
+        app_actions = {
+            'authorize': {
+                'url_function': self.get_app_authorize_url,
+                'url_kwargs': {'request': request},
+                'link_label': _('Authorize App'),
+                'link_help_text': _('To connect to GitHub repositories, you first need to authorize the MPDL app.')
+            },
+        }
+        if APP_TYPE == 'github_app':
+            app_actions.update({
                 'install': {
                     'url_function': self.get_app_install_url,
                     'url_kwargs': {'request': request},
                     'link_label': _('Install App'),
-                    'link_help_text': _('To connect to GitHub repos, you first need to install the MPDL app.')
-                },
-                'authorize': {
-                    'url_function': self.get_app_authorize_url,
-                    'url_kwargs': {'request': request},
-                    'link_label': _('Authorize App'),
-                    'link_help_text': _('To connect to GitHub repos, you first need to authorize the MPDL app.')
+                    'link_help_text': _('To connect to GitHub repositories, you first need to install the MPDL app.')
                 },
                 'update': {
                     'url_function': self.get_app_config_url, 
                     'url_kwargs': {'request': request, 'installation_id': installation_id},
                     'link_label': _('Update list'),
-                    'link_help_text': _('List of your accessible GitHub repositories (up to 10 repos will be shown here).')
+                    'link_help_text': _('List of your accessible GitHub repositories (up to 10 will be shown here).')
                 }
-            }
-            # check if app was already installed and authorized, otherwise update repo access
-            repo_choices = self.get_repo_choices(installation_id, access_token)
-            action = 'install' if installation_id is None else ('authorize' if access_token is None else 'update')
+            })
+        # check if app was already (installed and) authorized, otherwise update repo access
+        action = 'install' if (APP_TYPE == 'github_app' and installation_id is None) else (
+            'authorize' if access_token is None else (None if APP_TYPE == 'oauth_app' else 'update')
+        )
+        if action is None:
+            repo_help_text = _("""These are your most recently updated, accessible GitHub repositories (up to 10 will be shown here). 
+                To add another repository to this list, please update the repository and reload this page""")
+        else:
             url_function, url_kwargs, link_label, link_help_text = app_actions[action].values()
             url = url_function(**url_kwargs)
             repo_help_text = mark_safe(f'{link_help_text} <a href="{url}">{link_label}</a>') if url is not None else ''
-
-        else:
-            repo_choices = None
-            repo_help_text = None
 
         return repo_choices, repo_help_text
 
     
     def get_form(self, request, form, *args, **kwargs):
-        repo_choices, repo_help_text = self.get_repo_form_field_data(request)
+        repo_permission_map = {
+            'GitHubExportForm': 'push',
+            'GitHubImportForm': 'pull'
+        }
+        minimum_repo_permission = repo_permission_map[form.__name__]
+        repo_choices, repo_help_text = self.get_repo_form_field_data(request, minimum_repo_permission)
         return form(
                 *args,
                 **kwargs,
