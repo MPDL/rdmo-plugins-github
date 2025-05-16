@@ -16,7 +16,7 @@ Setup
 Install the plugin in your RDMO virtual environment using pip (directly from GitHub):
 
 ```bash
-pip install git+https://github.com/rdmorganiser/rdmo-plugins-github
+pip install git+https://github.com/MPDL/rdmo-plugins-github@dev
 ```
 
 An *App* has to be registered with GitHub. Go to https://github.com/settings/developers and create an application with your RDMO URL as callback URL.
