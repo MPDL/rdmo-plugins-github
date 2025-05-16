@@ -16,9 +16,9 @@ from rdmo.core.imports import handle_fetched_file
 from rdmo.core.plugins import get_plugin
 from rdmo.projects.imports import RDMOXMLImport
 from rdmo.projects.providers import OauthIssueProvider
-# from rdmo.projects.exports import Export
+from rdmo.projects.exports import Export
 
-from rdmo_maus.maus_exports import MAUSExport
+from rdmo_maus.smp_exports import SMPExportMixin
 
 from .mixins import GitHubProviderMixin
 from .forms import GitHubExportForm, GitHubImportForm
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 APP_TYPE = settings.GITHUB_PROVIDER['app_type']
 
-class GitHubExportProvider(GitHubProviderMixin, MAUSExport):
+class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
     choice_labels = [
         ('xml', _('RDMO XML')),
         ('csvcomma', _('CSV (comma separated)')), 
