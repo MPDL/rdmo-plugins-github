@@ -58,10 +58,9 @@ PROJECT_EXPORTS += [
 ]
 ```
 
-2. Install the helper plugin "MAUS" in your RDMO virtual environment using pip (directly from GitHub). MAUS provides the SMP specific export choices:
+2. Install the plugin [rdmo_maus](https://github.com/MPDL/rdmo-plugins-maus) in your RDMO virtual environment using pip (directly from GitHub). This plugin provides the SMP specific export choices:
 
 ```bash
-not working yet!!!!!!!!
 pip install git+https://github.com/MPDL/rdmo-plugins-maus
 ```
 
