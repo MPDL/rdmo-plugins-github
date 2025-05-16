@@ -38,7 +38,7 @@ PROJECT_ISSUE_PROVIDERS += [
 ]
 ```
 
-For the import, add the plugin to `PROJECT_IMPORTS` and `PROJECT_IMPORTS_LIST` in `config/settings/local.py`:
+For the import, add the plugin to `PROJECT_IMPORTS` and its key to `PROJECT_IMPORTS_LIST` in `config/settings/local.py`:
 
 ```python
 PROJECT_IMPORTS = [
