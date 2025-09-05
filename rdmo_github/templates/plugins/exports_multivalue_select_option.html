@@ -22,7 +22,7 @@
 {% if widget.errors %}
     <div class="help-block error">
         {% for error in widget.errors %}
-        <p class="text-danger">* {{ error }}</p>
+        <p class="text-danger">* {{ error.message }}</p>
         {% endfor %}
     </div>
 {% endif %}
