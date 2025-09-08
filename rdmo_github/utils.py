@@ -1,15 +1,8 @@
-import requests
 import logging
 
-from django.http import HttpResponse
-from django.template import TemplateSyntaxError
-
-from rdmo.core.utils import render_to_format
 from rdmo.domain.models import Attribute
 from rdmo.options.models import OptionSet
 from rdmo.projects.models.value import Value
-from rdmo.projects.utils import get_value_path
-from rdmo.views.models import View
 
 logger = logging.getLogger(__name__)
 
