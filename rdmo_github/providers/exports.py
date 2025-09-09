@@ -244,17 +244,17 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                         'key': choice_key,
                         'label': next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key), 
                         'success': False,
-                        'processing_status': _('not exported - it would have overwritten existing file in repository')
+                        'processing_status': _('not exported - it would have overwritten existing file in repository.')
                     })
                     continue
             
             content = self.render_export_content(choice_key) 
             if content is None:
                 success = False
-                processing_status = _('not exported - it could not be created')
+                processing_status = _('not exported - it could not be created.')
             else:
                 success = True
-                processing_status = _('successfully exported')
+                processing_status = _('successfully exported.')
                 url = self.create_request_url(repo, file_path)
 
                 choice_request_data = {
@@ -308,11 +308,11 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                             'key': choice_key,
                             'label': choice_label,
                             'success': False,
-                            'processing_status': _('not exported - something when wrong')
+                            'processing_status': _('not exported - something went wrong.')
                         }
                     )
                 )
-                status.update({'success': False, 'processing_status': _('not exported - something when wrong')})
+                status.update({'success': False, 'processing_status': _('not exported - something went wrong.')})
                 processed_exports[index] = status
 
         return processed_exports
