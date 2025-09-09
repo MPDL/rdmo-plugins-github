@@ -3,7 +3,6 @@ import hmac
 import json
 import logging
 import requests
-from urllib.parse import quote
 
 from django import forms
 from django.conf import settings
@@ -12,17 +11,15 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 
-from rdmo.core.imports import handle_fetched_file
 from rdmo.core.plugins import get_plugin
-from rdmo.projects.imports import RDMOXMLImport
 from rdmo.projects.providers import OauthIssueProvider
 from rdmo.projects.exports import Export
 
 from rdmo_maus.smp_exports import SMPExportMixin
 
-from .mixins import GitHubProviderMixin
-from .forms import GitHubExportForm, GitHubImportForm
-from .utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_record_id_from_project_value
+from ..mixins import GitHubProviderMixin
+from ..forms.forms import GitHubExportForm
+from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_record_id_from_project_value
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +38,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         export_choices = []
         for choice_key, choice_label in self.choice_labels:
             file_extension = 'csv' if choice_key.startswith('csv') else choice_key
-            file_path = f"data/{self.project.title.replace(' ', '_')}{f'_{choice_key}' if file_extension == 'csv' else ''}.{file_extension}"
+            file_path = f"data/smp{f'_{choice_key}' if file_extension == 'csv' else ''}.{file_extension}"
 
             export_choices.append(
                 (f'False,{file_path}', (choice_label, choice_key))
@@ -51,9 +48,9 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         if smp_exports and len(smp_exports) > 0:
             smp_export_choices = [(f'False,{v["file_path"]}', (v["label"], k)) for k,v in smp_exports.items()]
             return smp_export_choices + export_choices
-        else:
-            return export_choices
-
+        
+        return export_choices
+                         
     def render(self):
         self.pop_from_session(self.request, 'github_export_choices_to_update')
         
@@ -72,7 +69,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         }
         return render(self.request, 'plugins/github_export_form.html', context, status=200)
 
-    def submit(self):        
+    def submit(self):
         form = self.get_form(self.request, GitHubExportForm, self.request.POST, export_choices=self.export_choices)
         if 'cancel' in self.request.POST:
             if self.project is None:
@@ -81,35 +78,11 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 return redirect('project', self.project.id)
 
         if form.is_valid():
-            new_repo = form.cleaned_data['new_repo']
-            
-            # 1. Check file paths to warn user if repo files will be overwritten
+            # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             choices_to_update = self.get_from_session(self.request, 'github_export_choices_to_update')
+            new_repo = form.cleaned_data['new_repo']
             if not new_repo and choices_to_update is None:
-                choices_to_update, checked_export_choices, checked_branch = self.check_file_paths(
-                    form.cleaned_data['exports'], 
-                    form.cleaned_data['repo'], 
-                    form.cleaned_data['branch']
-                )
-                self.store_in_session(self.request, 'github_export_choices_to_update', choices_to_update)
-                self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
-                self.store_in_session(self.request, 'github_checked_branch', checked_branch)
-                
-                selected_choices = [c for c in self.export_choices if c[1][1] in choices_to_update.keys()]
-                form = self.get_form(
-                    self.request, 
-                    GitHubExportForm, 
-                    self.request.POST, 
-                    export_choices=selected_choices, 
-                    export_choices_to_update=choices_to_update
-                )
-                context = {
-                    'new_repo_name_display': 'none',
-                    'repo_display': 'block',
-                    'form': form,
-                    'submit_label':_('Export to GitHub')
-                }             
-                return render(self.request, 'plugins/github_export_form.html', context, status=200)
+                return self.validate_export_choices(form.cleaned_data)
             
             # 2. Create file content for selected choices and export them
             request_data, repo_html_url = self.process_form_data(form.cleaned_data, choices_to_update)
@@ -121,18 +94,17 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 url = request_data[0].pop('url')
                 if len(request_data) > 1:
                     self.store_in_session(self.request, 'github_export_data', request_data[1:])
-
             else:
                 return render(self.request, 'core/error.html', {
                     'title': _('Something went wrong'),
-                    'errors': [_('Export choices could not be created or repository content would have been overwritten without a warning')]
+                    'errors': [_('Export choices could not be created or repository content would have been overwritten without a warning.')]
                 }, status=200)
             
             if new_repo:
                 return self.make_request(self.request, 'post', url, json=request_data[0])
             else:
                 return self.make_request(self.request, 'put', url, json=request_data[0])
-
+            
         new_repo = True if 'new_repo' in form.data else False
         context = {
             'new_repo_name_display': 'block' if new_repo else 'none',
@@ -173,23 +145,44 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         choices_to_update = {}
         for e in exports:
             choice_key, file_path = e.split(',')
-            url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
-                api_url=self.api_url,
-                repo=quote(repo.replace('https://github.com/', '').strip('/')),
-                path=quote(file_path, safe=''),
-                ref=quote(branch, safe='')
-            )
+            url = self.create_request_url(repo, file_path, branch)
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
             choice_in_repo = True if sha is not None else False
             choices_to_update[choice_key] = choice_in_repo
 
         return choices_to_update, exports, branch
+    
+    def validate_export_choices(self, form_data):
+        choices_to_update, checked_export_choices, checked_branch = self.check_file_paths(
+            form_data['exports'], 
+            form_data['repo'], 
+            form_data['branch']
+        )
+        self.store_in_session(self.request, 'github_export_choices_to_update', choices_to_update)
+        self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
+        self.store_in_session(self.request, 'github_checked_branch', checked_branch)
+        
+        selected_choices = [c for c in self.export_choices if c[1][1] in choices_to_update.keys()]
+        form = self.get_form(
+            self.request, 
+            GitHubExportForm, 
+            self.request.POST, 
+            export_choices=selected_choices, 
+            export_choices_to_update=choices_to_update
+        )
+        context = {
+            'new_repo_name_display': 'none',
+            'repo_display': 'block',
+            'form': form,
+            'submit_label':_('Export to GitHub')
+        }             
+        return render(self.request, 'plugins/github_export_form.html', context, status=200)
 
     def render_export(self, choice_key):
         smp_exports = getattr(self, 'smp_exports', None)
         if smp_exports and (
-            choice_key in self.smp_exports.keys() or (choice_key.startswith('license_') and 'license' in self.smp_exports.keys())
+            choice_key in self.smp_exports.keys() or (choice_key.startswith('license_') and 'licenses' in self.smp_exports_map.keys())
         ):
             response = self.render_smp_export(choice_key)
         else:
@@ -213,24 +206,21 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         return choice_content
     
     def process_form_data(self, form_data, choices_to_update, update_without_warning=False):
-        # print('process_form_data()')
         request_data = []
 
         # REPO
         new_repo  = form_data['new_repo']
         repo_html_url = None
         if new_repo:
-            new_repo_name = quote(form_data['new_repo_name'], safe='')
-            url = f'{self.api_url}/user/repos'
             request_data.append({
-                'name': new_repo_name,
-                'message': quote(form_data['commit_message']),
-                'url': url
+                'name': form_data['new_repo_name'],
+                'message': form_data['commit_message'],
+                'url': f'{self.api_url}/user/repos'
             })
 
             repo = 'repo_placeholder'
         else:
-            repo = quote(form_data['repo'].replace('https://github.com/', '').strip('/'))    
+            repo = form_data['repo'].replace('https://github.com/', '').strip('/')    
             repo_html_url = 'https://github.com/{repo}'.format(repo=repo)
 
         # EXPORT OPTIONS
@@ -240,14 +230,13 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         processed_exports = []
         for e in exports:
             choice_key, file_path = e.split(',')
-            # # print(f'    choice_key: {choice_key}, file_path: {file_path}')
-            initial_file_path = file_path if new_repo else next((exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key), file_path)
+            initial_file_path = file_path if new_repo else next(
+                (exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key), 
+                file_path
+            )
             initial_branch = 'main' if new_repo else checked_branch
             branch = 'main' if new_repo else form_data['branch']
             if file_path != initial_file_path or branch != initial_branch:
-                # print('checking file paths before exporting')
-                # print(f'    file_path: {file_path}, initial_file_path: {initial_file_path}')
-                # print(f'    branch: {branch}, initial_branch: {initial_branch}')
                 new_choices_to_update, __, ___ = self.check_file_paths([e], form_data['repo'], branch)
                 choices_to_update[choice_key] = new_choices_to_update[choice_key]
                 if new_choices_to_update[choice_key] == True and not update_without_warning:
@@ -266,21 +255,19 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             else:
                 success = True
                 processing_status = _('successfully exported')
-                url = '{api_url}/repos/{repo}/contents/{path}'.format(
-                    api_url=self.api_url, 
-                    repo=repo, 
-                    path=quote(file_path, safe='')
-                )
+                url = self.create_request_url(repo, file_path)
+
                 choice_request_data = {
-                    'message': quote(form_data['commit_message'], safe=' '),
+                    'message': form_data['commit_message'],
                     'content': content,
-                    'branch': quote(branch, safe=''),
+                    'branch': branch,
                     'url': url,
                     'choice_key': choice_key
                 }
                 stored_sha = get_record_id_from_project_value(self.project, choice_key)
                 if stored_sha is not None:
                     choice_request_data['sha'] = stored_sha
+                    clear_record_id_from_project_value(self.project, choice_key)
                 request_data.append(choice_request_data)
 
             choice_label = next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key)
@@ -380,8 +367,11 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
         if repo_url:
-            repo = quote(repo_url.replace('https://github.com', '').strip('/'))
-            return f'https://api.github.com/repos/{repo}/issues'
+            repo = repo_url.replace('https://github.com', '').strip('/')
+            return '{api_url}/repos/{repo}/issues'.format(
+                api_url=self.api_url, 
+                repo=repo
+            )
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
         return {
@@ -448,85 +438,3 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
             github_app_repo_url['help'] = repo_help_text
 
         self.fields = {'repo_url': github_app_repo_url}
-
-
-class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
-
-    def render(self):
-        redirect_url = self.request.build_absolute_uri()
-        self.process_app_context(self.request, redirect_url=redirect_url)
-        
-        access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
-        if access_token is None:
-            return self.authorize(self.request)
-        
-        # if APP_TYPE == 'github_app':
-        #     redirect_url = self.request.build_absolute_uri()
-        #     self.process_app_context(self.request, redirect_url=redirect_url)
-
-        #     access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
-        #     if access_token is None:
-        #         return self.authorize(self.request)
-        
-        context = {
-            'source_title': 'GitHub',
-            'app_type': APP_TYPE,
-            'repo_display': 'block',
-            'other_repo_display': 'none',
-            'form': self.get_form(self.request, GitHubImportForm)
-        }
-        return render(self.request, 'plugins/github_import_form.html', context, status=200)
-
-    def submit(self):
-        form = self.get_form(self.request, GitHubImportForm, self.request.POST)
-
-        if 'cancel' in self.request.POST:
-            if self.project is None:
-                return redirect('projects')
-            else:
-                return redirect('project', self.project.id)
-
-        if form.is_valid():            
-            self.request.session['import_source_title'] = self.source_title = form.cleaned_data['path']
-
-            url = self.process_form_data(form.cleaned_data)
-            # print(f'url: {url}')
-            return self.make_request(self.request, 'get', url)
-
-        other_repo_check = True if 'other_repo_check' in form.data else False
-        repo_display = 'none' if other_repo_check else 'block'
-        other_repo_display = 'block' if other_repo_check else 'none'
-        context = {
-            'source_title': 'GitHub',
-            'app_type': APP_TYPE,
-            'repo_display': repo_display,
-            'other_repo_display': other_repo_display,
-            'form': form
-        }
-
-        return render(self.request, 'plugins/github_import_form.html', context, status=200)
-    
-    def process_form_data(self, form_data):
-        other_repo_check  = form_data['other_repo_check']
-        if other_repo_check:
-            repo = quote(form_data['other_repo'].replace('https://github.com/', '').strip('/'))
-        else:
-            repo = quote(form_data['repo'].replace('https://github.com/', '').strip('/'))
-
-        url = '{api_url}/repos/{repo}/contents/{path}?ref={ref}'.format(
-            api_url=self.api_url,
-            repo=repo,
-            path=quote(form_data['path']),
-            ref=quote(form_data['ref'])
-        )
-
-        return url
-
-    def get_success(self, request, response):
-        file_content = response.json().get('content')
-        request.session['import_file_name'] = handle_fetched_file(base64.b64decode(file_content))
-
-        if self.current_project:
-            return redirect('project_update_import', self.current_project.id)
-        else:
-            return redirect('project_create_import')
