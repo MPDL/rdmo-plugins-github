@@ -7,6 +7,7 @@ def validate_text_field(field_name, value, min_length, max_length, not_allowed_p
     errors = []
     
     matches = re.findall(not_allowed_pattern, value)
+    matches = list(set(matches))
     if len(matches) > 0:
         errors.append(ValidationError(
             _(f'''{field_name} contains special character(s): "{'", "'.join(matches)}". Allowed characters are: {allowed_char_name_str}.''')

@@ -263,28 +263,20 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
                     per_page=10,
                     sort='updated'
                 )
-            # print(f'url: {url}')
         
         response = requests.get(url, headers=self.get_authorization_headers(access_token=access_token))
         try:
             response.raise_for_status()
         except requests.HTTPError as e:
-            # logger.error('error requesting github app repo list: %s (%s)', response.content, response.status_code)
             logger.error('error requesting github repo list: %s (%s)', response.content, response.status_code)
             raise e
 
         if APP_TYPE == 'github_app':
-            # print('repo permissions: ')
-            # print([{'repo': r.get('html_url'), 'p': r.get('permissions')} for r in response.json().get('repositories', [])])
             repos = [r.get('html_url') for r in response.json().get('repositories', []) if r.get('permissions', {}).get(minimum_repo_permission) == True]
         else:
-            # print('repo permissions: ')
-            # print([{'repo': r.get('html_url'), 'p': r.get('permissions')} for r in response.json()])
             repos = [r.get('html_url') for r in response.json() if r.get('permissions', {}).get(minimum_repo_permission) == True]
 
         repo_choices = [(r, r) for r in repos]
-        # print(f'    repo_choices: {repo_choices}')
-
         return repo_choices
     
     def get_repo_form_field_data(self, request, minimum_repo_permission):
@@ -321,7 +313,7 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
         )
         if action is None:
             repo_help_text = _("""These are your most recently updated, accessible GitHub repositories (up to 10 will be shown here). 
-                To add another repository to this list, please update the repository and reload this page""")
+                To add another repository to this list, please update the repository and reload this page.""")
         else:
             url_function, url_kwargs, link_label, link_help_text = app_actions[action].values()
             url = url_function(**url_kwargs)
@@ -343,3 +335,15 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
                 repo_choices=repo_choices, 
                 repo_help_text=repo_help_text
             )
+    
+    def create_request_url(self, repo, path, ref=None):
+        url = '{api_url}/repos/{repo}/contents/{path}'.format(
+            api_url=self.api_url,
+            repo=repo.replace('https://github.com/', '').strip('/'),
+            path=path
+        )
+
+        if ref:
+            url += '?ref={ref}'.format(ref=ref)
+
+        return url
