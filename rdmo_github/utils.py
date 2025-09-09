@@ -46,5 +46,8 @@ def set_record_id_on_project_value(project, record_id, export_format):
         project_sha_value.save()
 
 def clear_record_id_from_project_value(project, export_format):
-    """Clear the record_id text from the project's values by setting it to an empty string."""
-    set_record_id_on_project_value(project, '', export_format)
+    '''Delete the record_id from the project's values if it exists'''
+    
+    project_sha_value, record_id_attribute = get_project_value_with_record_id(project, export_format)
+    if project_sha_value is not None:
+        project_sha_value.delete()
