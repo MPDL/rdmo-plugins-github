@@ -23,8 +23,6 @@ from ..utils import set_record_id_on_project_value, get_record_id_from_project_v
 
 logger = logging.getLogger(__name__)
 
-APP_TYPE = settings.GITHUB_PROVIDER['app_type']
-
 class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
     choice_labels = [
         ('xml', _('RDMO XML')),
@@ -124,16 +122,14 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         response = requests.get(url, headers=self.get_authorization_headers(access_token))
         if response.status_code == 200:
             github_sha = response.json().get('sha')
-            if stored_sha == github_sha:
-                logger.info(f'Stored sha {stored_sha} for export choice "{export_choice}" is valid.')
-            else:
+            if stored_sha != github_sha:
                 set_record_id_on_project_value(project, github_sha, export_choice)
                 logger.warning(f'Updating stored sha: stored value for export choice "{export_choice}" does not match with corresponding sha from github.')
 
             return github_sha
             
         elif response.status_code == 404:
-            logger.warning(f'No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
+            logger.error(f'No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
             # the export_choice does not exist in GitHub, delete the corresponding sha from the project.value.text
             clear_record_id_from_project_value(project, export_choice)
         else:
@@ -145,7 +141,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         choices_to_update = {}
         for e in exports:
             choice_key, file_path = e.split(',')
-            url = self.create_request_url(repo, file_path, branch)
+            url = self.get_request_url(repo, file_path, branch)
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
             choice_in_repo = True if sha is not None else False
@@ -181,9 +177,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
     def render_export(self, choice_key):
         smp_exports = getattr(self, 'smp_exports', None)
-        if smp_exports and (
-            choice_key in self.smp_exports.keys() or (choice_key.startswith('license_') and 'licenses' in self.smp_exports_map.keys())
-        ):
+        if smp_exports and choice_key in self.smp_exports.keys():
             response = self.render_smp_export(choice_key)
         else:
             export_plugin = get_plugin('PROJECT_EXPORTS', choice_key)
@@ -255,7 +249,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             else:
                 success = True
                 processing_status = _('successfully exported.')
-                url = self.create_request_url(repo, file_path)
+                url = self.get_request_url(repo, file_path)
 
                 choice_request_data = {
                     'message': form_data['commit_message'],
@@ -298,7 +292,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             try:
                 response.raise_for_status()
             except Exception as e:
-                logger.warning(f'error putting {choice_key} to github: {e}')
+                logger.error(f'Error putting {choice_key} to github: {e}')
                 choice_label = next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key)
                 index, status = next(
                     ((i, s) for i, s in enumerate(processed_exports) if s['key'] == choice_key), 
