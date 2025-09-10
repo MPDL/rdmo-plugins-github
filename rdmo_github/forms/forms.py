@@ -47,6 +47,7 @@ class GitHubExportForm(GithubBaseForm):
 
     new_repo_name = forms.CharField(
         label=_('Name for the new repository'),
+        help_text=_('Unique name for the new repository. No other of your repositories may have the same name, otherwise the export will fail.'),
         required=False,
         validators=[validate_new_repo_name]
     )
