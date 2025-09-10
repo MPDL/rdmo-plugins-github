@@ -71,7 +71,7 @@ class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
 
         # other_repo is form-validated and repo exists, 
         # but path and ref are not form-validated so must be url encoded 
-        url = self.create_request_url(repo, quote(form_data['path']), quote(form_data['ref'])) 
+        url = self.get_request_url(repo, quote(form_data['path']), quote(form_data['ref'])) 
         
         return url
 
