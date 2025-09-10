@@ -242,6 +242,12 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                     })
                     continue
             
+            choice_request_data = {}
+            stored_sha = get_record_id_from_project_value(self.project, choice_key)
+            if stored_sha is not None:
+                choice_request_data['sha'] = stored_sha
+                clear_record_id_from_project_value(self.project, choice_key)
+
             content = self.render_export_content(choice_key) 
             if content is None:
                 success = False
@@ -249,19 +255,14 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             else:
                 success = True
                 processing_status = _('successfully exported.')
-                url = self.get_request_url(repo, file_path)
 
-                choice_request_data = {
+                choice_request_data.update({
                     'message': form_data['commit_message'],
                     'content': content,
                     'branch': branch,
-                    'url': url,
+                    'url': self.get_request_url(repo, file_path),
                     'choice_key': choice_key
-                }
-                stored_sha = get_record_id_from_project_value(self.project, choice_key)
-                if stored_sha is not None:
-                    choice_request_data['sha'] = stored_sha
-                    clear_record_id_from_project_value(self.project, choice_key)
+                })
                 request_data.append(choice_request_data)
 
             choice_label = next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key)
