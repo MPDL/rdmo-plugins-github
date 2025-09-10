@@ -1,18 +1,12 @@
 import logging
 
 from rdmo.domain.models import Attribute
-from rdmo.options.models import OptionSet
 from rdmo.projects.models.value import Value
 
 logger = logging.getLogger(__name__)
 
 attribute_uri_prefix = "https://rdmo.mpdl.mpg.de/terms"
 attribute_sha_uri_key_prefix = "project/metadata/publication/github/sha/"
-
-def get_optionset_elements_with_uri(uri):
-    optionset_options = OptionSet.objects.get(uri=uri).elements
-    return [(option.uri_path, option.text) for option in optionset_options]
-
 
 def get_project_value_with_record_id(project, export_format):
     record_id_attribute, _created = Attribute.objects.get_or_create(uri_prefix=attribute_uri_prefix,
