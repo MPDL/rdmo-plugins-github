@@ -5,7 +5,7 @@ from requests.auth import HTTPBasicAuth
 
 from django.conf import settings
 from django.urls import reverse
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
@@ -18,34 +18,8 @@ logger = logging.getLogger(__name__)
 
 APP_TYPE = settings.GITHUB_PROVIDER['app_type']
 
-class GitHubAppProviderMixin(OauthProviderMixin):
-    GITHUB_APP_NAME = settings.GITHUB_PROVIDER['github_app_name']
-    install_url = f'https://github.com/apps/{GITHUB_APP_NAME}/installations/new'
-
-    def get_install_params(self, state):
-        return {
-            'client_id': self.client_id,
-            'state': state
-        }
-    
-    def get_app_config_url(self, request, installation_id):        
-        if installation_id is None: return
-
-        # get random state and store in session
-        state = self.get_state(request)
-        url = f'https://github.com/settings/installations/{installation_id}' + '?' + urlencode({'state': state})
-
-        return url
-    
-    def get_app_install_url(self, request):
-        # get random state and store in session
-        state = self.get_state(request)
-        url = self.install_url + '?' + urlencode(self.get_install_params(state))
-
-        return url
-    
-    
-class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" else OauthProviderMixin):
+class GitHubProviderMixin(OauthProviderMixin):
+    install_url = f"https://github.com/apps/{settings.GITHUB_PROVIDER['github_app_name']}/installations/new"
     authorize_url = 'https://github.com/login/oauth/authorize'
     token_url = 'https://github.com/login/oauth/access_token'
     api_url = 'https://api.github.com'
@@ -67,7 +41,13 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
     @property
     def redirect_path(self):
         return reverse('oauth_callback', args=['github'])
-
+    
+    def get_install_params(self, state):
+        return {
+            'client_id': self.client_id,
+            'state': state
+        }
+    
     def get_authorization_headers(self, access_token):
         return {
             'Authorization': f'token {access_token}',
@@ -90,8 +70,64 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
             'code': request.GET.get('code')
         }
     
+    def get_validate_headers(self):
+        return {
+            'Accept': 'application/vnd.github+json'
+        }
+    
+    def get_validate_params(self, access_token):
+        return {'access_token': access_token}
+    
+    def get_refresh_token_params(self, refresh_token):
+        return {
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token
+        }
+    
     def get_error_message(self, response):
         return response.json().get('message')
+    
+    def get_state(self, request):
+        state = get_random_string(length=32)
+        self.store_in_session(request, 'state', state)
+        return state
+    
+    def get_app_config_url(self, request, installation_id):        
+        if installation_id is None: return
+
+        # get random state and store in session
+        state = self.get_state(request)
+        url = f'https://github.com/settings/installations/{installation_id}' + '?' + urlencode({'state': state})
+
+        return url
+    
+    def get_app_install_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.install_url + '?' + urlencode(self.get_install_params(state))
+
+        return url
+    
+    def get_app_authorize_url(self, request):
+        # get random state and store in session
+        state = self.get_state(request)
+        url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
+
+        return url
+    
+    def get_request_url(self, repo, path, ref=None):
+        url = '{api_url}/repos/{repo}/contents/{path}'.format(
+            api_url=self.api_url,
+            repo=repo.replace('https://github.com/', '').strip('/'),
+            path=path
+        )
+
+        if ref:
+            url += '?ref={ref}'.format(ref=ref)
+
+        return url
     
     def process_app_context(self, request, *args, **kwargs):
         # pop state from all github providers
@@ -103,18 +139,6 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
         # save values in session
         for k,v in kwargs.items():
             self.store_in_session(request, k, v)
-    
-    def get_state(self, request):
-        state = get_random_string(length=32)
-        self.store_in_session(request, 'state', state)
-        return state
-    
-    def get_app_authorize_url(self, request):
-        # get random state and store in session
-        state = self.get_state(request)
-        url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
-
-        return url
     
     def authorize(self, request):
         installation_id = self.get_from_session(request, 'installation_id')
@@ -179,24 +203,8 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
             'errors': [_('No redirect could be found.')]
         }, status=200)
     
-    def get_validate_headers(self):
-        return {
-            'Accept': 'application/vnd.github+json'
-        }
-    
-    def get_validate_params(self, access_token):
-        return {'access_token': access_token}
-    
     def get_validate_auth(self):
         return HTTPBasicAuth(self.client_id, self.client_secret)
-    
-    def get_refresh_token_params(self, refresh_token):
-        return {
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'grant_type': 'refresh_token',
-            'refresh_token': refresh_token
-        }
     
     # https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#check-a-token
     # https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api?apiVersion=2022-11-28#using-basic-authentication
@@ -335,15 +343,3 @@ class GitHubProviderMixin(GitHubAppProviderMixin if APP_TYPE == "github_app" els
                 repo_choices=repo_choices, 
                 repo_help_text=repo_help_text
             )
-    
-    def create_request_url(self, repo, path, ref=None):
-        url = '{api_url}/repos/{repo}/contents/{path}'.format(
-            api_url=self.api_url,
-            repo=repo.replace('https://github.com/', '').strip('/'),
-            path=path
-        )
-
-        if ref:
-            url += '?ref={ref}'.format(ref=ref)
-
-        return url
