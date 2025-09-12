@@ -62,6 +62,6 @@ def validate_export_file_path(value):
 def validate_import_file_path(value):
     if not value.endswith('.xml'):
         raise ValidationError(
-            _('File must be in XML format'),
+            _('File must be in XML format.'),
             code='invalid'
         )

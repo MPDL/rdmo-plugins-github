@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-12 09:15+0000\n"
+"POT-Creation-Date: 2025-09-12 13:53+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -59,7 +59,7 @@ msgstr "Name des Repositoriums"
 msgid "alphanumeric, hyphen, underscore, and period"
 msgstr "alphanumerisch, Bindestrich, Unterstrich und Punkt"
 
-#: forms/custom_validators.py:54 forms/forms.py:112
+#: forms/custom_validators.py:54 forms/forms.py:113
 #: templates/plugins/exports_multivalue_select_option.html:16
 msgid "File path"
 msgstr "Dateipfad"
@@ -68,9 +68,17 @@ msgstr "Dateipfad"
 msgid "alphanumeric, slash, hyphen, underscore, and period"
 msgstr "alphanumerisch, Slash, Bindestrich, Unterstrich und Punkt"
 
-#: forms/custom_widgets.py:8
+#: forms/custom_validators.py:65
+msgid "File must be in XML format."
+msgstr "Die Datei muss im XML-Format vorliegen."
+
+#: forms/custom_widgets.py:9
 msgid "Special characters will be percent-encoded"
 msgstr "Sonderzeichen werden prozentkodiert"
+
+#: forms/custom_widgets.py:10
+msgid "example_folder/example_file.extension"
+msgstr "beispiel_ordner/beispiel_datei.dateikennung"
 
 #: forms/forms.py:29
 msgid ""
@@ -132,7 +140,7 @@ msgstr "Commitnachricht"
 msgid "A name for the new repository is required."
 msgstr "Ein Name für das neue Repositorium ist erforderlich."
 
-#: forms/forms.py:89 forms/forms.py:128 forms/forms.py:131
+#: forms/forms.py:89 forms/forms.py:131 forms/forms.py:134
 msgid "A GitHub repository is required."
 msgstr "Ein GitHub-Repositorium ist erforderlich."
 
@@ -148,7 +156,11 @@ msgstr ""
 "URL des GitHub-Repositoriums, aus dem Sie importieren möchten. Wenn dieses "
 "Repositorium nicht öffentlich ist, muss es für Sie zugänglich sein."
 
-#: forms/forms.py:113
+#: forms/forms.py:108
+msgid "https://github.com/example-owner/example-repo"
+msgstr "https://github.com/beispiel-besitzerin/beispiel-repo"
+
+#: forms/forms.py:114
 msgid ""
 "The import file's relative path in the repository. The file must be in XML "
 "format."
@@ -156,7 +168,11 @@ msgstr ""
 "Der relative Pfad der Importdatei im Repository. Die Datei muss im XML-"
 "Format vorliegen."
 
-#: forms/forms.py:117
+#: forms/forms.py:115
+msgid "example_folder/example_xml_file.xml"
+msgstr "beispiel_ordner/beispiel_datei.dateikennung"
+
+#: forms/forms.py:120
 msgid "Branch, tag, or commit"
 msgstr "Branch, Tag, oder Commit"
 
