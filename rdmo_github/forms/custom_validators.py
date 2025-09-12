@@ -50,7 +50,7 @@ def validate_new_repo_name(value):
 
     return validate_text_field(field_name, value, min_length, max_length, not_allowed_pattern, allowed_char_name_str)
 
-def validate_file_path(value):
+def validate_export_file_path(value):
     field_name = _('File path')
     min_length = 6
     max_length = 100
@@ -58,3 +58,10 @@ def validate_file_path(value):
     allowed_char_name_str = _('alphanumeric, slash, hyphen, underscore, and period')
 
     return validate_text_field(field_name, value, min_length, max_length, not_allowed_pattern, allowed_char_name_str)
+
+def validate_import_file_path(value):
+    if not value.endswith('.xml'):
+        raise ValidationError(
+            _('File must be in XML format'),
+            code='invalid'
+        )

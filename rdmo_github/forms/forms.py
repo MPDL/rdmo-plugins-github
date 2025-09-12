@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from .custom_fields import ExportsMultipleChoiceField
-from .custom_validators import validate_new_repo_name
+from .custom_validators import validate_new_repo_name, validate_import_file_path
 
 class GithubBaseForm(forms.Form):
     def __init__(self, *args, **kwargs):
@@ -105,12 +105,15 @@ class GitHubImportForm(GithubBaseForm):
     other_repo = forms.CharField(
         label=_('GitHub repository'),
         help_text=_("URL of GitHub repository you want to import from. If this repository is not public, you must have access to it."),
+        widget=forms.TextInput(attrs={'placeholder': _('https://github.com/example-owner/example-repo')}),
         required=False
     )
 
     path = forms.CharField(
         label=_('File path'),
-        help_text=_("The import file's relative path in the repository. The file must be in XML format.")
+        help_text=_("The import file's relative path in the repository. The file must be in XML format."),
+        widget=forms.TextInput(attrs={'placeholder': _('example_folder/example_xml_file.xml')}),
+        validators=[validate_import_file_path]
     )
 
     ref = forms.CharField(
