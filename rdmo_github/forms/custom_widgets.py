@@ -75,6 +75,9 @@ class ExportsSelectMultiple(forms.SelectMultiple):
         '''Return a list of choices for this widget.
         Each choice consists of a multi widget with a checkbox and a text.
         '''
+
+        if isinstance(value, list) and len(value) == 0:
+            self.errors = {}
         
         selected_option_keys = [v.split(',')[0] for v in value]
         transformed_value = [f'{True},{v.split(",")[1]}' for v in value]
