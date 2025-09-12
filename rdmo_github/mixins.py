@@ -7,8 +7,8 @@ from django.conf import settings
 from django.urls import reverse
 from django.shortcuts import render
 from django.utils.crypto import get_random_string
-from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
+from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
 
 from rdmo.services.providers import OauthProviderMixin
@@ -244,7 +244,7 @@ class GitHubProviderMixin(OauthProviderMixin):
                 self.pop_from_session(request, 'access_token')
                 return
         except requests.HTTPError as e:
-            logger.error('refresh token error: %s (%s)', response.content, response.status_code)
+            logger.error('GitHub refresh token error: %s (%s)', response.content, response.status_code)
             return
 
         response_data = response.json()
@@ -276,7 +276,7 @@ class GitHubProviderMixin(OauthProviderMixin):
         try:
             response.raise_for_status()
         except requests.HTTPError as e:
-            logger.error('error requesting github repo list: %s (%s)', response.content, response.status_code)
+            logger.error('Error requesting GitHub repo list: %s (%s)', response.content, response.status_code)
             raise e
 
         if APP_TYPE == 'github_app':
@@ -320,8 +320,8 @@ class GitHubProviderMixin(OauthProviderMixin):
             'authorize' if access_token is None else (None if APP_TYPE == 'oauth_app' else 'update')
         )
         if action is None:
-            repo_help_text = _("""These are your most recently updated, accessible GitHub repositories (up to 10 will be shown here). 
-                To add another repository to this list, please update the repository and reload this page.""")
+            repo_help_text = _('''These are your most recently updated, accessible GitHub repositories (up to 10 will be shown here). 
+                To add another repository to this list, please update the repository and reload this page.''')
         else:
             url_function, url_kwargs, link_label, link_help_text = app_actions[action].values()
             url = url_function(**url_kwargs)

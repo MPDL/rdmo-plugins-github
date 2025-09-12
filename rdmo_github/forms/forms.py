@@ -83,10 +83,10 @@ class GitHubExportForm(GithubBaseForm):
         repo = self.cleaned_data.get('repo')
 
         if new_repo and new_repo_name == '':
-            self.add_error('new_repo_name', ValidationError(_('A name for the new repository is required.')))
+            self.add_error('new_repo_name', ValidationError(_('A name for the new repository is required.'), code='required'))
         
         if not new_repo and repo == '':
-            self.add_error('repo', ValidationError(_('A GitHub repository is required.')))
+            self.add_error('repo', ValidationError(_('A GitHub repository is required.'), code='required'))
 
 
 class GitHubImportForm(GithubBaseForm):

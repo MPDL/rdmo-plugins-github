@@ -5,7 +5,6 @@ import logging
 import requests
 
 from django import forms
-from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
@@ -69,6 +68,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
     def submit(self):
         form = self.get_form(self.request, GitHubExportForm, self.request.POST, export_choices=self.export_choices)
+        
         if 'cancel' in self.request.POST:
             if self.project is None:
                 return redirect('projects')
@@ -76,6 +76,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 return redirect('project', self.project.id)
 
         if form.is_valid():
+            
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             choices_to_update = self.get_from_session(self.request, 'github_export_choices_to_update')
             new_repo = form.cleaned_data['new_repo']
@@ -275,7 +276,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         successfully_processed_exports = list(filter(lambda x: x['success'] == True, processed_exports))
         if len(successfully_processed_exports) == 0:
-            logger.warning(f'No export content could be created for the selected choices: {exports}')
+            logger.warning(f'No export content could be created for the selected choices: {exports}.')
             return None, None
 
         self.store_in_session(self.request, 'github_processed_exports', processed_exports)

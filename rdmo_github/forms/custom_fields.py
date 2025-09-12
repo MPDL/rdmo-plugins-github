@@ -16,8 +16,7 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
         super().__init__(fields)
 
     def clean(self, value):
-        """
-        This method applies to a multi-value field corresponding to 
+        """This method applies to a multi-value field corresponding to 
         a choice in ExportsMultipleChoiceField.
         Every export choice consists of a boolean field and a char field.
 
@@ -28,8 +27,8 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
         the choice's errors to the main field ExportsMultipleChoiceField.
         After validating all choices, ExportsMultipleChoiceField 
         raises all ValidationErrors.
-
         """
+
         clean_data = []
         errors = []
         if not isinstance(value, list):
@@ -40,7 +39,7 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
             # i = 1 -> character (text for file path)
             field_value = value[i]
 
-            if field_value in self.empty_values: # self.empty_values = (None, "", [], (), {})
+            if field_value in self.empty_values: # self.empty_values = (None, '', [], (), {})
                 errors.append(ValidationError(_('A file path is required.'), code='required')) 
                 
             try:
@@ -117,7 +116,7 @@ class ExportsMultipleChoiceField(forms.MultipleChoiceField):
         
         value = self.to_python(value)
 
-        if value in self.empty_values and self.required: # self.empty_values = (None, "", [], (), {})
+        if value in self.empty_values and self.required: # self.empty_values = (None, '', [], (), {})
             self.widget.errors = {}
             raise ValidationError(_('At least one choice must be selected.'), code='required')
 

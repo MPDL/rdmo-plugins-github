@@ -14,7 +14,8 @@ def validate_text_field(field_name, value, min_length, max_length, not_allowed_p
                 field_name=field_name,
                 spec_chars='", "'.join(matches),
                 allowed_char_name_str=allowed_char_name_str
-            )
+            ),
+            code='invalid'
         ))
     
     if len(value) > max_length:
@@ -23,7 +24,8 @@ def validate_text_field(field_name, value, min_length, max_length, not_allowed_p
                 field_name=field_name,
                 max_length=max_length,
                 len_value=len(value)
-            )
+            ),
+            code='invalid'
         ))
 
     if len(value) < min_length:
@@ -32,7 +34,8 @@ def validate_text_field(field_name, value, min_length, max_length, not_allowed_p
                 field_name=field_name,
                 min_length=min_length,
                 len_value=len(value)
-            )
+            ),
+            code='invalid'
         ))
 
     if len(errors) > 0:
