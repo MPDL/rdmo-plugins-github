@@ -1,6 +1,6 @@
 import logging
 import requests
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from requests.auth import HTTPBasicAuth
 
 from django.conf import settings
@@ -121,11 +121,11 @@ class GitHubProviderMixin(OauthProviderMixin):
         url = '{api_url}/repos/{repo}/contents/{path}'.format(
             api_url=self.api_url,
             repo=repo.replace('https://github.com/', '').strip('/'),
-            path=path
+            path=path.strip('../')
         )
 
         if ref:
-            url += '?ref={ref}'.format(ref=ref)
+            url += '?ref={ref}'.format(ref=quote(ref, safe=''))
 
         return url
     
