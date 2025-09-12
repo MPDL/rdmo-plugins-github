@@ -5,7 +5,11 @@ class ExportsChoiceMultiWidget(forms.MultiWidget):
     def __init__(self, attrs=None):
         widgets = {
             'checkbox': forms.CheckboxInput(attrs={'onchange': 'toggle_option_attributes_visibility(this)'}),
-            'text': forms.TextInput(attrs={'title': _('Special characters will be percent-encoded'), 'oninput': 'hide_check_message(this)'}),
+            'text': forms.TextInput(attrs={
+                'title': _('Special characters will be percent-encoded'), 
+                'placeholder': _('example_folder/example_file.extension'),
+                'oninput': 'hide_check_message(this)'
+            })
         }
         super().__init__(widgets, attrs)
 
