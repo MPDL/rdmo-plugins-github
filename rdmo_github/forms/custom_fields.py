@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from .custom_widgets import ExportsChoiceMultiWidget, ExportsSelectMultiple
-from .custom_validators import validate_file_path
+from .custom_validators import validate_export_file_path
 
 class ExportsChoiceMultiValueField(forms.MultiValueField):
     widget = ExportsChoiceMultiWidget
@@ -11,7 +11,7 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
     def __init__(self):
         fields = (
             forms.BooleanField(),
-            forms.CharField(validators=[validate_file_path]),
+            forms.CharField(validators=[validate_export_file_path]),
         )
         super().__init__(fields)
 
