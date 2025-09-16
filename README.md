@@ -4,10 +4,10 @@ rdmo-plugins-github
 This repo implements three plugins for [RDMO](https://github.com/rdmorganiser/rdmo):
 
 * an [issue provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#issue-providers), which lets users push their tasks from RDMO to GitHub issues.
-* a [project import plugins](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private)repos.
+* a [project import plugin](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private) repos.
 * an export plugin, which can be used to export projects to (public or private) repos. For SMP projects, this plugin also provides other export choices that reuse project data (e.g. README, CITATION or LICENSE files).
 
-The plugin uses [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
+The plugins use [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
 
 
 Setup
@@ -19,14 +19,16 @@ Install the plugin in your RDMO virtual environment using pip (directly from Git
 pip install git+https://github.com/MPDL/rdmo-plugins-github@dev
 ```
 
-An *App* has to be registered with GitHub. Go to https://github.com/settings/developers and create an application with your RDMO URL as callback URL.
+An *App* has to be registered with GitHub. Go to https://github.com/settings/developers and create an application with your RDMO URL as callback URL. GitHub offers two types of apps: [GitHub Apps](https://docs.github.com/en/apps/using-github-apps/about-using-github-apps) and [OAuth Apps](https://docs.github.com/en/apps/oauth-apps), both app types use [OAUTH 2.0](https://oauth.net/2/).
 
-The `client_id` and the `client_secret` need to be configured in `config/settings/local.py`:
+The `client_id`, the `client_secret`, the `app_type` (`oauth_app` or `github_app`), and the `github_app_name` ([Register a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)) need to be configured in `config/settings/local.py`:
 
 ```python
 GITHUB_PROVIDER = {
     'client_id': '',
-    'client_secret': ''
+    'client_secret': '',
+    'app_type': 'oauth_app' | 'github_app',
+    'github_app_name': ''
 }
 ```
 
@@ -34,7 +36,7 @@ For the issue provider, add the plugin to `PROJECT_ISSUE_PROVIDERS` in `config/s
 
 ```python
 PROJECT_ISSUE_PROVIDERS += [
-    ('github', _('GitHub Provider'), 'rdmo_github.providers.GitHubProvider'),
+    ('github', _('GitHub Provider'), 'rdmo_github.providers.exports.GitHubIssueProvider'),
 ]
 ```
 
@@ -42,7 +44,7 @@ For the import, add the plugin to `PROJECT_IMPORTS` and its key to `PROJECT_IMPO
 
 ```python
 PROJECT_IMPORTS = [
-    ('github', _('Import from GitHub'), 'rdmo_github.providers.GitHubImport'),
+    ('github', _('GitHub'), 'rdmo_github.providers.imports.GitHubImport'),
 ]
 
 PROJECT_IMPORTS_LIST += ['github']
@@ -54,7 +56,7 @@ For the export:
 
 ```python
 PROJECT_EXPORTS += [
-    ('github', _('Github'), 'rdmo_github.providers.GitHubExportProvider'),
+    ('github', _('Github'), 'rdmo_github.providers.exports.GitHubExportProvider'),
 ]
 ```
 
@@ -76,8 +78,8 @@ Additionally, a secret can be added to enable GitHub to communicate to RDMO when
 
 ### Project import
 
-Users can import project files directly from a public or private GitHub repository.
+Users can import xml project files directly from a public or private GitHub repository.
 
 ### Project export
 
-Users can export project import files directly to a public or private GitLab repository. For SMP projects, they can also export custom files (README, CITATION, LICENSE) created with the SMP project's data. They can choose to export to an existing repository or to create a new one.
+Users can export project files directly to a public or private GitHub repository. For SMP projects, they can also export custom files (README, CITATION, LICENSE) created with the SMP project's data. They can choose to export to an existing repository or to create a new one.
