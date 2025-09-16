@@ -35,7 +35,9 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         export_choices = []
         for choice_key, choice_label in self.choice_labels:
             file_extension = 'csv' if choice_key.startswith('csv') else choice_key
-            file_path = f"data/smp{f'_{choice_key}' if file_extension == 'csv' else ''}.{file_extension}"
+            catalog = self.project.catalog.uri_path
+            catalog = catalog.lower() if isinstance(catalog, str) else 'project_export'
+            file_path = f"data/{catalog}{f'_{choice_key}' if file_extension == 'csv' else ''}.{file_extension}"
 
             export_choices.append(
                 (f'False,{file_path}', (choice_label, choice_key))
