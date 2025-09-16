@@ -72,7 +72,7 @@ Usage
 
 ### Issue provider
 
-Users can add a GitHub intergration to their projects. They need to provide the URL to their repository.  Afterwards, issues can be pushed to the GitHub repo.
+Users can add a GitHub intergration to their projects. They need to provide the URL to their repository.  Afterwards, project tasks can be pushed to the GitHub repo as repo issues.
 
 Additionally, a secret can be added to enable GitHub to communicate to RDMO when an issue has been closed. For this, a webhook has to be added at `<https://github.com/<user>/<repo>/settings/hooks`. The webhook has to point to `https://<rdmo_url>/projects/<project_id>/integrations/<integration_id>/webhook/`, the content type is `application/json` and the secret has to be exactly the secret entered in the integration.
 
