@@ -118,11 +118,12 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         # Retrieve sha from the project's stored values
         stored_sha = get_record_id_from_project_value(project, export_choice)
-        
+
         # Send a GET request to Github to validate the stored sha
         response = requests.get(url, headers=self.get_authorization_headers(access_token))
         if response.status_code == 200:
             github_sha = response.json().get('sha')
+
             if stored_sha != github_sha:
                 set_record_id_on_project_value(project, github_sha, export_choice)
                 logger.warning(f'Updating stored sha: stored value for export choice "{export_choice}" does not match with corresponding sha from github.')
@@ -247,7 +248,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             stored_sha = get_record_id_from_project_value(self.project, choice_key)
             if stored_sha is not None:
                 choice_request_data['sha'] = stored_sha
-                clear_record_id_from_project_value(self.project, choice_key)
+            clear_record_id_from_project_value(self.project, choice_key)
 
             content = self.render_export_content(choice_key) 
             if content is None:
