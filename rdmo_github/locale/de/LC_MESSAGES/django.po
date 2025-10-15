@@ -2,13 +2,13 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-12 14:08+0000\n"
+"POT-Creation-Date: 2025-10-15 10:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,15 +18,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: rdmo_github/forms/custom_fields.py:43
+#: forms/custom_fields.py:43
 msgid "A file path is required."
 msgstr "Ein Dateipfad ist erforderlich."
 
-#: rdmo_github/forms/custom_fields.py:121
+#: forms/custom_fields.py:121
 msgid "At least one choice must be selected."
 msgstr "Mindestens eine Option muss ausgewählt werden."
 
-#: rdmo_github/forms/custom_validators.py:13
+#: forms/custom_validators.py:14
+msgid "whitespace"
+msgstr "Leerzeichen"
+
+#: forms/custom_validators.py:19
 #, python-brace-format
 msgid ""
 "{field_name} contains special character(s): \"{spec_chars}\". Allowed "
@@ -35,7 +39,7 @@ msgstr ""
 "{field_name} beinhaltet Sonderzeichen: \"{spec_chars}\". Diese sind die "
 "erlaubten Zeichen: {allowed_char_name_str}."
 
-#: rdmo_github/forms/custom_validators.py:23
+#: forms/custom_validators.py:29
 #, python-brace-format
 msgid ""
 "{field_name} must have at most {max_length} characters (it has {len_value})."
@@ -43,7 +47,7 @@ msgstr ""
 "{field_name} darf höchstens {max_length} Zeichen enthalten (er hat "
 "{len_value})."
 
-#: rdmo_github/forms/custom_validators.py:33
+#: forms/custom_validators.py:39
 #, python-brace-format
 msgid ""
 "{field_name} must have at least {min_length} characters (it has {len_value})."
@@ -51,36 +55,36 @@ msgstr ""
 "{field_name} muss mindestens {min_length} Zeichen enthalten (er hat "
 "{len_value})."
 
-#: rdmo_github/forms/custom_validators.py:45
+#: forms/custom_validators.py:51
 msgid "Repository name"
 msgstr "Name des Repositoriums"
 
-#: rdmo_github/forms/custom_validators.py:49
+#: forms/custom_validators.py:55
 msgid "alphanumeric, hyphen, underscore, and period"
 msgstr "alphanumerisch, Bindestrich, Unterstrich und Punkt"
 
-#: rdmo_github/forms/custom_validators.py:54 rdmo_github/forms/forms.py:113
-#: rdmo_github/templates/plugins/exports_multivalue_select_option.html:16
+#: forms/custom_validators.py:60 forms/forms.py:113
+#: templates/plugins/exports_multivalue_select_option.html:16
 msgid "File path"
 msgstr "Dateipfad"
 
-#: rdmo_github/forms/custom_validators.py:58
+#: forms/custom_validators.py:64
 msgid "alphanumeric, slash, hyphen, underscore, and period"
 msgstr "alphanumerisch, Slash, Bindestrich, Unterstrich und Punkt"
 
-#: rdmo_github/forms/custom_validators.py:65
+#: forms/custom_validators.py:71
 msgid "File must be in XML format."
 msgstr "Die Datei muss im XML-Format vorliegen."
 
-#: rdmo_github/forms/custom_widgets.py:9
+#: forms/custom_widgets.py:9
 msgid "Special characters will be percent-encoded"
 msgstr "Sonderzeichen werden prozentkodiert"
 
-#: rdmo_github/forms/custom_widgets.py:10
+#: forms/custom_widgets.py:10
 msgid "example_folder/example_file.extension"
 msgstr "beispiel_ordner/beispiel_datei.dateikennung"
 
-#: rdmo_github/forms/forms.py:29
+#: forms/forms.py:29
 msgid ""
 "Warning: Existing content in GitHub will be overwritten. To avoid this, "
 "consider updating the file path or the branch."
@@ -88,15 +92,15 @@ msgstr ""
 "Warnung: Bestehende Inhalte in GitHub werden überschrieben. Um dies zu "
 "vermeiden, können der Dateipfad oder der Branch geändert werden."
 
-#: rdmo_github/forms/forms.py:40
+#: forms/forms.py:40
 msgid "Create new repository"
 msgstr "Neues Repositorium anlegen"
 
-#: rdmo_github/forms/forms.py:49
+#: forms/forms.py:49
 msgid "Name for the new repository"
 msgstr "Name des neuen Repositoriums"
 
-#: rdmo_github/forms/forms.py:50
+#: forms/forms.py:50
 msgid ""
 "Unique name for the new repository. No other of your repositories may have "
 "the same name, otherwise the export will fail."
@@ -104,28 +108,27 @@ msgstr ""
 "Eindeutiger Name für das neue Repositorium. Kein anderes Ihrer Repositorien "
 "darf denselben Namen haben, da sonst der Export fehlschlägt."
 
-#: rdmo_github/forms/forms.py:56 rdmo_github/forms/forms.py:100
-#: rdmo_github/forms/forms.py:106
+#: forms/forms.py:56 forms/forms.py:100 forms/forms.py:106
 msgid "GitHub repository"
 msgstr "GitHub-Repositorium"
 
-#: rdmo_github/forms/forms.py:62
+#: forms/forms.py:62
 msgid "Export choices"
 msgstr "Optionen zum Exportieren"
 
-#: rdmo_github/forms/forms.py:63
+#: forms/forms.py:63
 msgid "Warning: Existing content in GitHub will be overwritten."
 msgstr "Warnung: Bestehende Inhalte in GitHub werden überschrieben."
 
-#: rdmo_github/forms/forms.py:67
+#: forms/forms.py:67
 msgid "Select all export choices"
 msgstr "Alle Optionen auswählen"
 
-#: rdmo_github/forms/forms.py:72
+#: forms/forms.py:72
 msgid "Branch"
 msgstr "Branch"
 
-#: rdmo_github/forms/forms.py:73
+#: forms/forms.py:73
 msgid ""
 "An existing branch in the GitHub repository. For a new repository it must be "
 "the default branch \"main\"."
@@ -133,24 +136,23 @@ msgstr ""
 "Ein bestehender Branch im GitHub-Repositorium. Bei einem neuen Repositorium "
 "muss er der Standardbranch „main“ sein."
 
-#: rdmo_github/forms/forms.py:77
+#: forms/forms.py:77
 msgid "Commit message"
 msgstr "Commitnachricht"
 
-#: rdmo_github/forms/forms.py:86
+#: forms/forms.py:86
 msgid "A name for the new repository is required."
 msgstr "Ein Name für das neue Repositorium ist erforderlich."
 
-#: rdmo_github/forms/forms.py:89 rdmo_github/forms/forms.py:131
-#: rdmo_github/forms/forms.py:134
+#: forms/forms.py:89 forms/forms.py:131 forms/forms.py:134
 msgid "A GitHub repository is required."
 msgstr "Ein GitHub-Repositorium ist erforderlich."
 
-#: rdmo_github/forms/forms.py:94
+#: forms/forms.py:94
 msgid "Use other repository"
 msgstr "Ein anderes Repositorium benutzen"
 
-#: rdmo_github/forms/forms.py:107
+#: forms/forms.py:107
 msgid ""
 "URL of GitHub repository you want to import from. If this repository is not "
 "public, you must have access to it."
@@ -158,11 +160,11 @@ msgstr ""
 "URL des GitHub-Repositoriums, aus dem Sie importieren möchten. Wenn dieses "
 "Repositorium nicht öffentlich ist, muss es für Sie zugänglich sein."
 
-#: rdmo_github/forms/forms.py:108
+#: forms/forms.py:108
 msgid "https://github.com/example-owner/example-repo"
 msgstr "https://github.com/beispiel-besitzerin/beispiel-repo"
 
-#: rdmo_github/forms/forms.py:114
+#: forms/forms.py:114
 msgid ""
 "The import file's relative path in the repository. The file must be in XML "
 "format."
@@ -170,60 +172,60 @@ msgstr ""
 "Der relative Pfad der Importdatei im Repository. Die Datei muss im XML-"
 "Format vorliegen."
 
-#: rdmo_github/forms/forms.py:115
+#: forms/forms.py:115
 msgid "example_folder/example_xml_file.xml"
 msgstr "beispiel_ordner/beispiel_xml_datei.xml"
 
-#: rdmo_github/forms/forms.py:120
+#: forms/forms.py:120
 msgid "Branch, tag, or commit"
 msgstr "Branch, Tag, oder Commit"
 
-#: rdmo_github/mixins.py:156 rdmo_github/mixins.py:202
+#: mixins.py:156 mixins.py:202
 msgid "GitHub callback error"
 msgstr "GitHub-Callback-Fehler"
 
-#: rdmo_github/mixins.py:157
+#: mixins.py:157
 msgid "State parameter did not match."
 msgstr "Der Parameter 'state' stimmt nicht überein."
 
-#: rdmo_github/mixins.py:203
+#: mixins.py:203
 msgid "No redirect could be found."
 msgstr "Kein redirect gefunden."
 
-#: rdmo_github/mixins.py:299
+#: mixins.py:299
 msgid "Authorize App"
 msgstr "App autorisieren"
 
-#: rdmo_github/mixins.py:300
+#: mixins.py:300
 msgid ""
 "To connect to GitHub repositories, you first need to authorize the MPDL app."
 msgstr ""
 "Die Verbindung zu GitHub-Repositorien erfordert die Autorisierung der MPDL-"
 "App."
 
-#: rdmo_github/mixins.py:308
+#: mixins.py:308
 msgid "Install App"
 msgstr "App installieren"
 
-#: rdmo_github/mixins.py:309
+#: mixins.py:309
 msgid ""
 "To connect to GitHub repositories, you first need to install the MPDL app."
 msgstr ""
 "Die Verbindung zu GitHub-Repositorien erfordert die Installation der MPDL-"
 "App."
 
-#: rdmo_github/mixins.py:314
+#: mixins.py:314
 msgid "Update list"
 msgstr "Liste aktualisieren"
 
-#: rdmo_github/mixins.py:315
+#: mixins.py:315
 msgid ""
 "List of your accessible GitHub repositories (up to 10 will be shown here)."
 msgstr ""
 "Liste der für Sie zugänglichen GitHub-Repositorien (bis zu 10 werden hier "
 "angezeigt)."
 
-#: rdmo_github/mixins.py:323
+#: mixins.py:323
 msgid ""
 "These are your most recently updated, accessible GitHub repositories (up to "
 "10 will be shown here). \n"
@@ -235,31 +237,31 @@ msgstr ""
 "hinzuzufügen, aktualisieren Sie das Repositorium und laden Sie diese Seite "
 "neu."
 
-#: rdmo_github/providers/exports.py:27
+#: providers/exports.py:27
 msgid "RDMO XML"
 msgstr "RDMO XML"
 
-#: rdmo_github/providers/exports.py:28
+#: providers/exports.py:28
 msgid "CSV (comma separated)"
 msgstr "CSV (Komma getrennt)"
 
-#: rdmo_github/providers/exports.py:29
+#: providers/exports.py:29
 msgid "CSV (semicolon separated)"
 msgstr "CSV (Semikolon getrennt)"
 
-#: rdmo_github/providers/exports.py:30
+#: providers/exports.py:30
 msgid "JSON"
 msgstr "JSON"
 
-#: rdmo_github/providers/exports.py:65 rdmo_github/providers/exports.py:112
+#: providers/exports.py:67 providers/exports.py:114
 msgid "Proceed"
 msgstr "Fortfahren"
 
-#: rdmo_github/providers/exports.py:98
+#: providers/exports.py:100
 msgid "Something went wrong"
 msgstr "Etwas ist schief gelaufen"
 
-#: rdmo_github/providers/exports.py:99
+#: providers/exports.py:101
 msgid ""
 "Export choices could not be created or repository content would have been "
 "overwritten without a warning."
@@ -267,38 +269,38 @@ msgstr ""
 "Export-Optionen konnten nicht erstellt werden oder der Inhalt des "
 "Repositorium wäre ohne Warnung überschrieben worden."
 
-#: rdmo_github/providers/exports.py:112 rdmo_github/providers/exports.py:175
-#: rdmo_github/templates/plugins/github_export_form.html:12
+#: providers/exports.py:114 providers/exports.py:178
+#: templates/plugins/github_export_form.html:12
 msgid "Export to GitHub"
 msgstr "Nach GitHub exportieren"
 
-#: rdmo_github/providers/exports.py:242
+#: providers/exports.py:245
 msgid "not exported - it would have overwritten existing file in repository."
 msgstr ""
 "nicht exportiert - es hätte die bestehende Datei im Repositorium "
 "überschrieben."
 
-#: rdmo_github/providers/exports.py:255
+#: providers/exports.py:258
 msgid "not exported - it could not be created."
 msgstr "nicht exportiert - es konnte nicht erstellt werden."
 
-#: rdmo_github/providers/exports.py:258
+#: providers/exports.py:261
 msgid "successfully exported."
 msgstr "erfolgreich exportiert."
 
-#: rdmo_github/providers/exports.py:307 rdmo_github/providers/exports.py:311
+#: providers/exports.py:310 providers/exports.py:314
 msgid "not exported - something went wrong."
 msgstr "nicht exportiert - etwas ist schief gelaufen."
 
-#: rdmo_github/providers/exports.py:343
+#: providers/exports.py:346
 msgid "Add GitHub integration"
 msgstr "GitHub-Integration hinzufügen"
 
-#: rdmo_github/providers/exports.py:344
+#: providers/exports.py:347
 msgid "Send to GitHub"
 msgstr "An GitHub senden"
 
-#: rdmo_github/providers/exports.py:345
+#: providers/exports.py:348
 msgid ""
 "This integration allows the creation of issues in arbitrary GitHub "
 "repositories. The upload of attachments is not supported by GitHub."
@@ -306,28 +308,28 @@ msgstr ""
 "Diese Integration ermöglicht die Erstellung von Issues in beliebigen GitHub-"
 "Repositorien. Das Hochladen von Anhängen wird von GitHub nicht unterstützt."
 
-#: rdmo_github/providers/exports.py:352
+#: providers/exports.py:355
 msgid "The URL of the GitHub repository to send issues to."
 msgstr ""
 "Die URL des GitHub-Repositoriums, an das Issues gesendet werden sollen."
 
-#: rdmo_github/providers/exports.py:357
+#: providers/exports.py:360
 msgid "The secret for a GitHub webhook to close a task (optional)."
 msgstr ""
 "Das 'secret' für einen GitHub-Webhook zum Schließen einer Aufgabe (optional)."
 
-#: rdmo_github/templates/plugins/exports_multivalue_select_option.html:12
+#: templates/plugins/exports_multivalue_select_option.html:12
 msgid "File exists and will be overwritten"
 msgstr "Die Datei existiert und wird überschrieben"
 
-#: rdmo_github/templates/plugins/exports_multivalue_select_option.html:12
+#: templates/plugins/exports_multivalue_select_option.html:12
 msgid "File does not exist yet"
 msgstr "Die Datei existiert noch nicht"
 
-#: rdmo_github/templates/plugins/github_export_success.html:6
+#: templates/plugins/github_export_success.html:6
 msgid "Successful Export to GitHub"
 msgstr "Erfolgreicher Export nach GitHub"
 
-#: rdmo_github/templates/plugins/github_export_success.html:14
+#: templates/plugins/github_export_success.html:14
 msgid "Go to GitHub repo"
 msgstr "Zum GitHub-Repositorium"
