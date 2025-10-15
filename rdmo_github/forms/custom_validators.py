@@ -9,6 +9,12 @@ def validate_text_field(field_name, value, min_length, max_length, not_allowed_p
     matches = re.findall(not_allowed_pattern, value)
     matches = list(set(matches))
     if len(matches) > 0:
+        try:
+            index = matches.index(' ')
+            matches[index] = str(_('whitespace'))
+        except:
+            pass
+
         errors.append(ValidationError(
             _('{field_name} contains special character(s): "{spec_chars}". Allowed characters are: {allowed_char_name_str}.').format(
                 field_name=field_name,
