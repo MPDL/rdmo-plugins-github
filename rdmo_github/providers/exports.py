@@ -145,7 +145,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         choices_to_update = {}
         for e in exports:
             choice_key, file_path = e.split(',')
-            url = self.get_request_url(repo, file_path, branch)
+            url = self.get_request_url(repo, path=file_path, ref=branch)
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
             choice_in_repo = True if sha is not None else False
@@ -264,7 +264,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                     'message': form_data['commit_message'],
                     'content': content,
                     'branch': branch,
-                    'url': self.get_request_url(repo, file_path),
+                    'url': self.get_request_url(repo, path=file_path),
                     'choice_key': choice_key
                 })
                 request_data.append(choice_request_data)

@@ -117,12 +117,17 @@ class GitHubProviderMixin(OauthProviderMixin):
 
         return url
     
-    def get_request_url(self, repo, path, ref=None):
-        url = '{api_url}/repos/{repo}/contents/{path}'.format(
+    def get_request_url(self, repo, path=None, suffix=None, ref=None):
+        url = '{api_url}/repos/{repo}'.format(
             api_url=self.api_url,
-            repo=repo.replace('https://github.com/', '').strip('/'),
-            path=path.strip('../')
+            repo=repo.replace('https://github.com/', '').strip('/')
         )
+
+        if path:
+            url += '/contents/{path}'.format(path=path.strip('../'))
+
+        if suffix:
+            url += suffix
 
         if ref:
             url += '?ref={ref}'.format(ref=quote(ref, safe=''))
