@@ -110,8 +110,9 @@ class GitHubImportForm(GithubBaseForm):
     )
 
     path = forms.CharField(
-        label=_('File path'),
+        label=_('RDMO File path (optional)'),
         help_text=_("The import file's relative path in the repository. The file must be in XML format."),
+        required=False,
         widget=forms.TextInput(attrs={'placeholder': _('example_folder/example_xml_file.xml')}),
         validators=[validate_import_file_path]
     )
