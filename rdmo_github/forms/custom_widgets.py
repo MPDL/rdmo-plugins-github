@@ -1,7 +1,7 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
-class ExportsChoiceMultiWidget(forms.MultiWidget):
+class CustomChoiceMultiWidget(forms.MultiWidget):
     def __init__(self, attrs=None):
         widgets = {
             'checkbox': forms.CheckboxInput(attrs={'onchange': 'toggle_option_attributes_visibility(this)'}),
@@ -28,7 +28,7 @@ class ExportsChoiceMultiWidget(forms.MultiWidget):
         return [False, '']
     
     def get_context(self, name, value, checkbox_label, checkbox_id, text_id, attrs):
-        '''Create context for ExportsSelectMultiple.option_template_name. '''
+        '''Create context for CustomSelectMultiple.option_template_name. '''
         
         context = super().get_context(name, value, attrs)
         # value is a list/tuple of values, each corresponding to a widget
@@ -59,29 +59,63 @@ class ExportsChoiceMultiWidget(forms.MultiWidget):
         
         context['widget']['subwidgets'] = subwidgets
         return context
+    
 
-class ExportsSelectMultiple(forms.SelectMultiple):
+class CustomSelectMultiple(forms.SelectMultiple):
     allow_multiple_selected = True
-    option_template_name = 'plugins/exports_multivalue_select_option.html'
-    template_name = 'plugins/exports_multivalue_select.html'
     add_id_index = True
     checked_attribute = {'checked': True}
     option_inherits_attrs = True
     errors = {}
+    _choice_names = []
 
-    choice_widget = ExportsChoiceMultiWidget()
+    choice_widget = CustomChoiceMultiWidget()
+
+    def __init__(self, *args, **kwargs):
+        sortable = kwargs.pop('sortable', False)
+        super().__init__(*args, **kwargs)
+
+        self.sortable = sortable
+        self.option_template_name = 'plugins/sortable_custom_multivalue_select_option.html' if sortable else 'plugins/custom_multivalue_select_option.html'
+        self.template_name = 'plugins/sortable_custom_multivalue_select.html' if sortable else 'plugins/custom_multivalue_select.html'
+
+    @property
+    def choice_names(self):
+        return self._choice_names
+    
+    @choice_names.setter
+    def choice_names(self, new_names):
+        self._choice_names = new_names
+
+    def sort_choices(self, data, name):
+        selected_choices = [k for k,v in data.items() if (k.startswith(name) and 'on' in v)]
+        sorted_choice_names = [c.removeprefix(f'{name}_').removesuffix('_checkbox') for c in selected_choices]
+
+        for k in self.choice_names:
+            if k not in sorted_choice_names:
+                sorted_choice_names.append(k)
+
+        sorted_choices = []
+        for k in sorted_choice_names:
+            choice = next((c for c in self.choices if c[1][1] == k), None)
+            if choice is not None:
+                sorted_choices.append(choice)
+
+        return sorted_choice_names, sorted_choices
 
     def optgroups(self, name, value, attrs=None):
         '''Return a list of choices for this widget.
         Each choice consists of a multi widget with a checkbox and a text.
         '''
-
+        print(f'value: {value}')
         selected_option_keys = [v.split(',')[0] for v in value]
-        transformed_value = [f'{True},{v.split(",")[1]}' for v in value]
+        print(f'selected_option_keys: {selected_option_keys}')
+        transformed_value = [f'{True},{v.split(",")[-1]}' for v in value]
+        print(f'transformed_value: {transformed_value}')
 
         current_errors = {k: v for k, v in self.errors.items() if k in selected_option_keys}
-        self.errors = current_errors   
-        
+        self.errors = current_errors
+
         groups = []
         for index, (option_value, (option_label, option_key)) in enumerate(self.choices):
             i = selected_option_keys.index(option_key) if option_key in selected_option_keys else None
@@ -145,6 +179,16 @@ class ExportsSelectMultiple(forms.SelectMultiple):
         return id_
     
     def value_from_datadict(self, data, files, name):
+        # # print('CustomSelectMultiple.value_from_datadict()')
+        # # print('data')
+        # # print(data)
+        # # print('self.sortable')
+        # # print(f'name: {name}')
+        # # print(f'self.choice_names: {self.choice_names}')
+
+        if self.sortable:
+            self.choice_names, self.choices = self.sort_choices(data, name)
+        
         value = []
         for multiwidget_name in self.choice_names:
             multiwidget_value = self.choice_widget.value_from_datadict(data, files, f'{name}_{multiwidget_name}')

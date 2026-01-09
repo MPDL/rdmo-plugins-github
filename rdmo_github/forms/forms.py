@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .custom_fields import ExportsMultipleChoiceField
+from .custom_fields import CustomMultipleChoiceField
 from .custom_validators import validate_new_repo_name, validate_import_file_path
 
 class GithubBaseForm(forms.Form):
@@ -36,7 +36,7 @@ class GitHubExportForm(GithubBaseForm):
             )
             self.fields['branch'].widget = forms.TextInput(attrs={'oninput': f'hide_check_messages(this, {len(export_choices)})'})
 
-    new_repo = forms.BooleanField (
+    new_repo = forms.BooleanField(
         label=_('Create new repository'),
         required=False,
         widget=forms.CheckboxInput(
@@ -58,9 +58,11 @@ class GitHubExportForm(GithubBaseForm):
         widget=forms.RadioSelect
     )
 
-    exports = ExportsMultipleChoiceField(
+    exports = CustomMultipleChoiceField(
         label=_('Export choices'),
         help_text=_('Warning: Existing content in GitHub will be overwritten.'),
+        # option_template_name='plugins/exports_multivalue_select_option.html',
+        # template_name='plugins/exports_multivalue_select.html'
     )
 
     all_exports = forms.BooleanField(
@@ -90,6 +92,14 @@ class GitHubExportForm(GithubBaseForm):
 
 
 class GitHubImportForm(GithubBaseForm):
+    def __init__(self, *args, **kwargs):
+        import_choices = kwargs.pop('import_choices', None)
+        super().__init__(*args, **kwargs)
+
+        if import_choices is not None:
+            self.fields['imports'].choices = import_choices
+            self.fields['imports'].choice_names = [c[1][1] for c in import_choices]
+
     other_repo_check = forms.BooleanField (
         label=_('Use other repository'),
         required=False,
@@ -109,12 +119,10 @@ class GitHubImportForm(GithubBaseForm):
         required=False
     )
 
-    path = forms.CharField(
-        label=_('RDMO File path (optional)'),
-        help_text=_("The import file's relative path in the repository. The file must be in XML format."),
-        required=False,
-        widget=forms.TextInput(attrs={'placeholder': _('example_folder/example_xml_file.xml')}),
-        validators=[validate_import_file_path]
+    imports = CustomMultipleChoiceField(
+        label=_('Import choices'),
+        help_text=_('Select the choices you want to import from. Once they are in the gray box, move them to prioritize them.'),
+        sortable=True
     )
 
     ref = forms.CharField(

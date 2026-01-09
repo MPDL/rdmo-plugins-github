@@ -2,11 +2,11 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .custom_widgets import ExportsChoiceMultiWidget, ExportsSelectMultiple
+from .custom_widgets import CustomChoiceMultiWidget, CustomSelectMultiple
 from .custom_validators import validate_export_file_path
 
-class ExportsChoiceMultiValueField(forms.MultiValueField):
-    widget = ExportsChoiceMultiWidget
+class CustomChoiceMultiValueField(forms.MultiValueField):
+    widget = CustomChoiceMultiWidget
 
     def __init__(self):
         fields = (
@@ -17,15 +17,15 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
 
     def clean(self, value):
         """This method applies to a multi-value field corresponding to 
-        a choice in ExportsMultipleChoiceField.
+        a choice in CustomMultipleChoiceField.
         Every export choice consists of a boolean field and a char field.
 
         Validate every subvalue in value ([boolean_value, char_value]). 
         Each subvalue is validated against the corresponding Field in self.fields.
 
         Important: ValidationErrors are NOT raised here, clean() returns
-        the choice's errors to the main field ExportsMultipleChoiceField.
-        After validating all choices, ExportsMultipleChoiceField 
+        the choice's errors to the main field CustomMultipleChoiceField.
+        After validating all choices, CustomMultipleChoiceField 
         raises all ValidationErrors.
         """
 
@@ -66,11 +66,19 @@ class ExportsChoiceMultiValueField(forms.MultiValueField):
         return 'False,'
     
 
-class ExportsMultipleChoiceField(forms.MultipleChoiceField):
-    widget = ExportsSelectMultiple
-    choice_field = ExportsChoiceMultiValueField()
+class CustomMultipleChoiceField(forms.MultipleChoiceField):
+    # widget = CustomSelectMultiple
+    choice_field = CustomChoiceMultiValueField()
     _choice_names = []
     _choices_to_update = {}
+
+    def __init__(self, *args, **kwargs):
+        sortable = kwargs.pop('sortable', False)
+        super().__init__(*args, **kwargs)
+
+        self.widget = CustomSelectMultiple(
+            sortable=sortable
+        )
     
     @property
     def choice_names(self):
@@ -113,11 +121,11 @@ class ExportsMultipleChoiceField(forms.MultipleChoiceField):
         is an empty string because the error message is displayed below the 
         corresponding choice(s). 
         '''
-        
         value = self.to_python(value)
-
+        # print('clean()')
+        # print(f'    value: {value}')
+        self.widget.errors = {}
         if value in self.empty_values and self.required: # self.empty_values = (None, '', [], (), {})
-            self.widget.errors = {}
             raise ValidationError(_('At least one choice must be selected.'), code='required')
 
         # validate choice values, which consist of multivalues (boolean and char) 
