@@ -38,6 +38,11 @@ function toggle_option_attributes_visibility(element) {
 
     var check_message_span = document.getElementById(`id_exports_check_message_${index}`);
     check_message_span.style.display = element.checked ? 'inline' : 'none';
+
+    var error_message_div = document.getElementById(`id_exports_errors_${index}`);
+    if (error_message_div) {
+      error_message_div.style.display = element.checked ? 'block' : 'none';
+    }
 }
 
 function hide_check_message(element) {

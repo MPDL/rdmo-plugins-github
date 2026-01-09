@@ -20,7 +20,7 @@
     </label>
 </div>
 {% if widget.errors %}
-    <div class="help-block error">
+    <div id="id_exports_errors_{{ index }}" class="help-block error">
         {% for error in widget.errors %}
         <p class="text-danger">* {{ error.message }}</p>
         {% endfor %}
