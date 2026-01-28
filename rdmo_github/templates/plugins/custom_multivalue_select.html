@@ -1,3 +1,25 @@
-{% with id=widget.attrs.id %}<div{% if id %} id="{{ id }}"{% endif %}>{% for option in widget.optgroups %}
-    {% include option.template_name with widget=option index=forloop.counter0 %}{% endfor %}
-</div>{% endwith %}
+{% if widget.sortable %}
+    <div {% if widget.attrs.id %} id="selected_{{ widget.attrs.id }}"{% endif %} class="selected" >
+        {% for option in widget.optgroups %}
+            {% if option.selected %}
+                <div class="choice-block" id="{{ forloop.counter0 }}" >
+                    {% include option.template_name with widget=option index=forloop.counter0 sortable=widget.sortable %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <div {% if widget.attrs.id %} id="unselected_{{ widget.attrs.id }}"{% endif %} class="unselected" >
+        {% for option in widget.optgroups %}
+            {% if not option.selected %}
+                <div class="choice-block" id="{{ forloop.counter0 }}" >
+                    {% include option.template_name with widget=option index=forloop.counter0 sortable=widget.sortable %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% else %}
+    {% for option in widget.optgroups %}
+        {% include option.template_name with widget=option index=forloop.counter0 %}
+    {% endfor %}
+{% endif %}
+

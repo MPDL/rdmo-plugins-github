@@ -1,26 +1,43 @@
 {% load i18n %}
 
 <div class="checkbox" >
-    <label style="width: 100%; display: flex; align-items: center;">
+    {% if sortable %}
+        <div 
+            class="drag-icon fa fa-arrows drag" 
+            id="drag_icon_{{ index }}"
+            style="display: {% if widget.selected %}flex{% else %}none{% endif %};" 
+            {% if widget.selected %}draggable="true"{% endif %}
+        ></div>
+    {% endif %}
+    <label class="multivalue-checkbox" >
         {% with checkbox=widget.subwidgets.0 text=widget.subwidgets.1 %}
-        <span style="flex-grow: 1;">
+        <span class="multivalue-checkbox-checkbox" >
             {% include "django/forms/widgets/input.html" with widget=checkbox %}
             {{ checkbox.label }}
+        </span>
+        {% if text %}
             <span 
-                id="id_exports_check_message_{{ index }}" 
-                style="color: {% if widget.option_in_repo == True %}red{% else %}green{% endif %}; margin-left: 0.5rem; display: {% if widget.option_in_repo == None %}none{% else %}inline{% endif %}; %}" >
-                {% if widget.option_in_repo == True %}{% trans 'File exists and will be overwritten' %}{% elif widget.option_in_repo == False %}{% trans 'File does not exist yet' %}{% else %}{% endif %}
+                id="id_file_path_{{ index }}" 
+                class="multivalue-checkbox-text"
+                style="display: {% if widget.selected %}flex{% else %}none{% endif %};" 
+            >
+                {{ text.label }}
+                {% include "django/forms/widgets/input.html" with widget=text %}  
             </span>
-        </span>
-        <span id="id_exports_file_path_{{ index }}" style="width: 50%; align-items: center; display: {% if widget.selected %}flex{% else %}none{% endif %};" >
-            <span style="width: 70px;">{% trans 'File path' %}</span>
-            {% include "django/forms/widgets/input.html" with widget=text %}  
-        </span>
+        {% endif %}
         {% endwith %}
     </label>
+    {% if widget.option_in_repo != None %}
+        <span 
+            id="id_check_message_{{ index }}" 
+            style="color: {% if widget.option_in_repo == True %}red{% else %}green{% endif %};" 
+        >
+            {% if widget.option_in_repo == True %}{% trans 'File exists and will be overwritten' %}{% elif widget.option_in_repo == False %}{% trans 'File does not exist yet' %}{% else %}{% endif %}
+        </span>
+    {% endif %}
 </div>
 {% if widget.errors %}
-    <div id="id_exports_errors_{{ index }}" class="help-block error">
+    <div id="id_errors_{{ index }}" class="help-block error">
         {% for error in widget.errors %}
         <p class="text-danger">* {{ error.message }}</p>
         {% endfor %}
