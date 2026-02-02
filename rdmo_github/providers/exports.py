@@ -8,16 +8,17 @@ from django import forms
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 
 from rdmo.core.plugins import get_plugin
 from rdmo.projects.providers import OauthIssueProvider
 from rdmo.projects.exports import Export
 
-from rdmo_maus.smp_exports import SMPExportMixin
+from rdmo_maus.exports.smp_exports import SMPExportMixin
 
 from ..mixins import GitHubProviderMixin
 from ..forms.forms import GitHubExportForm
+from ..forms.custom_validators import validate_file_path, FilePathExtensionValidator
 from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_record_id_from_project_value
 
 logger = logging.getLogger(__name__)
@@ -38,20 +39,73 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             catalog = self.project.catalog.uri_path
             catalog = catalog.lower() if isinstance(catalog, str) else 'project_export'
             file_path = f"data/{catalog}{f'_{choice_key}' if file_extension == 'csv' else ''}.{file_extension}"
+            file_path_label = _('File path')
 
             export_choices.append(
-                (f'False,{file_path}', (choice_label, choice_key))
+                (f'False,{file_path}', (choice_label, file_path_label), choice_key)
             )
 
         smp_exports = getattr(self, 'smp_exports', None)
         if smp_exports and len(smp_exports) > 0:
-            smp_export_choices = [(f'False,{v["file_path"]}', (v["label"], k)) for k,v in smp_exports.items()]
+            smp_export_choices = [(f'False,{v["file_path"]}', (v["label"], file_path_label), k) for k,v in smp_exports.items()]
             return smp_export_choices + export_choices
         
         return export_choices
+    
+    @property
+    def export_choice_validators(self):
+        export_choice_validators = {}
+
+        valid_extensions = {
+            'xml': '.xml',
+            'csvcomma': '.csv', 
+            'csvsemicolon': 'csv', 
+            'json': '.json',
+        }
+        choice_keys = ['xml', 'csvcomma', 'csvsemicolon', 'json']
+        
+        smp_exports = getattr(self, 'smp_exports', None)
+        if smp_exports and len(smp_exports) > 0:
+            valid_extensions.update(
+                {k: f".{v['file_path'].split('.')[-1]}" for k,v in smp_exports.items() if not k.startswith('license')}
+            )
+            choice_keys.extend(smp_exports.keys())
+
+        
+        for choice_key in choice_keys:
+            if choice_key.startswith('license'):
+                export_choice_validators[choice_key] = {
+                    'text': [validate_file_path]
+                }
+                continue
+            
+            export_choice_validators[choice_key] = {
+                'text': [validate_file_path, FilePathExtensionValidator(valid_extensions.get(choice_key))]
+            }
+        
+        return export_choice_validators
+    
+    @property
+    def export_choice_attributes(self):
+        export_choice_attributes = {}
+        for c in self.export_choices:
+            simple_checkbox = False
+            values = c[0].split(',')
+            if isinstance(values, list) and len(values) == 1:
+                simple_checkbox = True
+
+            choice_key = c[2]
+            if not simple_checkbox:
+                export_choice_attributes[choice_key] = {
+                    'text': {
+                        'placeholder': _('example_folder/example_file.extension'),
+                    }
+                }
+
+        return export_choice_attributes
                          
     def render(self):
-        self.pop_from_session(self.request, 'github_export_choices_to_update')
+        self.pop_from_session(self.request, 'github_export_choice_warnings')
         
         redirect_url = self.request.build_absolute_uri()
         self.process_app_context(self.request, redirect_url=redirect_url)
@@ -63,13 +117,25 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         context = {
             'new_repo_name_display': 'none',
             'repo_display': 'block',
-            'form': self.get_form(self.request, GitHubExportForm, export_choices=self.export_choices),
-            'submit_label': _('Proceed')
+            'form': self.get_form(
+                self.request, 
+                GitHubExportForm, 
+                export_choices=self.export_choices,
+                export_choice_validators=self.export_choice_validators,
+                export_choice_attributes=self.export_choice_attributes
+            )
         }
         return render(self.request, 'plugins/github_export_form.html', context, status=200)
 
     def submit(self):
-        form = self.get_form(self.request, GitHubExportForm, self.request.POST, export_choices=self.export_choices)
+        form = self.get_form(
+            self.request, 
+            GitHubExportForm, 
+            self.request.POST, 
+            export_choices=self.export_choices,
+            export_choice_validators=self.export_choice_validators,
+            export_choice_attributes=self.export_choice_attributes
+        )
         
         if 'cancel' in self.request.POST:
             if self.project is None:
@@ -80,13 +146,17 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         if form.is_valid():
             
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
-            choices_to_update = self.get_from_session(self.request, 'github_export_choices_to_update')
+            export_choice_warnings = self.get_from_session(self.request, 'github_export_choice_warnings')
+            # print(f'export_choice_warnings: {export_choice_warnings}')
             new_repo = form.cleaned_data['new_repo']
-            if not new_repo and choices_to_update is None:
-                return self.validate_export_choices(form.cleaned_data)
+            if not new_repo and export_choice_warnings is None:
+                context, export_choice_warnings = self.validate_export_choices(form.cleaned_data)
+
+                if len(export_choice_warnings) > 0:
+                    return render(self.request, 'plugins/github_export_form.html', context, status=200)
             
             # 2. Create file content for selected choices and export them
-            request_data, repo_html_url = self.process_form_data(form.cleaned_data, choices_to_update)
+            request_data, repo_html_url = self.process_form_data(form.cleaned_data, export_choice_warnings)
             
             if repo_html_url is not None:
                 self.store_in_session(self.request, 'github_export_repo', repo_html_url)
@@ -110,8 +180,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         context = {
             'new_repo_name_display': 'block' if new_repo else 'none',
             'repo_display': 'none' if new_repo else 'block',
-            'form': form,
-            'submit_label': _('Export to GitHub') if new_repo else _('Proceed')
+            'form': form
         }
         return render(self.request, 'plugins/github_export_form.html', context, status=200)
     
@@ -142,42 +211,48 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
     def check_file_paths(self, exports, repo, branch):
         access_token = self.get_from_session(self.request, 'access_token')
-        choices_to_update = {}
+        export_choice_warnings = {}
+        choice_keys = []
         for e in exports:
             choice_key, file_path = e.split(',')
+            choice_keys.append(choice_key)
             url = self.get_request_url(repo, path=file_path, ref=branch)
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
-            choice_in_repo = True if sha is not None else False
-            choices_to_update[choice_key] = choice_in_repo
+            # choice_in_repo = True if sha is not None else False
+            if sha:
+                export_choice_warnings[choice_key] = [gettext('A file with the same path exists in repo and will be overwritten')]
 
-        return choices_to_update, exports, branch
+        return export_choice_warnings, choice_keys, exports, branch
     
     def validate_export_choices(self, form_data):
-        choices_to_update, checked_export_choices, checked_branch = self.check_file_paths(
+        export_choice_warnings, selected_choice_keys, checked_export_choices, checked_branch = self.check_file_paths(
             form_data['exports'], 
             form_data['repo'], 
             form_data['branch']
         )
-        self.store_in_session(self.request, 'github_export_choices_to_update', choices_to_update)
+        
+        self.store_in_session(self.request, 'github_export_choice_warnings', export_choice_warnings)
         self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
         self.store_in_session(self.request, 'github_checked_branch', checked_branch)
         
-        selected_choices = [c for c in self.export_choices if c[1][1] in choices_to_update.keys()]
+        selected_choices = [c for c in self.export_choices if c[2] in selected_choice_keys]
         form = self.get_form(
             self.request, 
             GitHubExportForm, 
             self.request.POST, 
             export_choices=selected_choices, 
-            export_choices_to_update=choices_to_update
+            export_choice_warnings=export_choice_warnings,
+            export_choice_validators=self.export_choice_validators,
+            export_choice_attributes=self.export_choice_attributes
         )
         context = {
             'new_repo_name_display': 'none',
             'repo_display': 'block',
-            'form': form,
-            'submit_label':_('Export to GitHub')
+            'form': form
         }             
-        return render(self.request, 'plugins/github_export_form.html', context, status=200)
+        # return render(self.request, 'plugins/github_export_form.html', context, status=200)
+        return context, export_choice_warnings
 
     def render_export(self, choice_key):
         smp_exports = getattr(self, 'smp_exports', None)
@@ -203,7 +278,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         return choice_content
     
-    def process_form_data(self, form_data, choices_to_update, update_without_warning=False):
+    def process_form_data(self, form_data, export_choice_warnings, update_without_warning=False):
         request_data = []
 
         # REPO
@@ -235,12 +310,12 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             initial_branch = 'main' if new_repo else checked_branch
             branch = 'main' if new_repo else form_data['branch']
             if file_path != initial_file_path or branch != initial_branch:
-                new_choices_to_update, __, ___ = self.check_file_paths([e], form_data['repo'], branch)
-                choices_to_update[choice_key] = new_choices_to_update[choice_key]
-                if new_choices_to_update[choice_key] == True and not update_without_warning:
+                new_export_choice_warnings, __, ___, ____ = self.check_file_paths([e], form_data['repo'], branch)
+                export_choice_warnings[choice_key] = new_export_choice_warnings[choice_key]
+                if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
                     processed_exports.append({
                         'key': choice_key,
-                        'label': next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key), 
+                        'label': next((c[1][0] for c in self.export_choices if c[2] == choice_key), choice_key), 
                         'success': False,
                         'processing_status': _('not exported - it would have overwritten existing file in repository.')
                     })
@@ -269,10 +344,10 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 })
                 request_data.append(choice_request_data)
 
-            choice_label = next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key)
+            choice_label = next((c[1][0] for c in self.export_choices if c[2] == choice_key), choice_key)
             processed_exports.append({
                 'key': choice_key,
-                'label': choice_label, 
+                'label': choice_label,
                 'success': success,
                 'processing_status': processing_status
             })
