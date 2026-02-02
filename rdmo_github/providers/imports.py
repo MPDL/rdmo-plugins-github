@@ -15,7 +15,7 @@ from rdmo.options.models import OptionSet, Option
 from rdmo.domain.models import Attribute
 from rdmo.projects.models.value import Value
 from rdmo.projects.models.project import Project
-from rdmo.questions.models import Catalog
+from rdmo.questions.models import Catalog, Page, QuestionSet
 from rdmo.core.imports import handle_fetched_file
 from rdmo.projects.imports import RDMOXMLImport
 from rdmo.projects.mixins import ProjectImportMixin
@@ -24,6 +24,7 @@ from rdmo.projects.serializers.export import ProjectSerializer as ProjectExportS
 from rdmo.core.plugins import get_plugin
 
 from ..mixins import GitHubProviderMixin
+from ..forms.custom_validators import validate_file_path, FilePathExtensionValidator
 from ..forms.forms import GitHubImportForm
 
 logger = logging.getLogger(__name__)
@@ -34,14 +35,49 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
     @property
     def import_choices(self):
         import_choices =[
-            ('False,data/smp.xml', (_('RDMO XML'), 'xml')),
-            ('False,CITATION.cff', ('CITATION', 'citation')),
-            ('False,LICENSE', ('LICENSE', 'license')),
-            ('False,blabla', (_('repo dependency graph'), 'sbom')),
-            ('False,blabla', (_('repo languages'), 'languages'))
+            ('False,data/smp.xml', (_('RDMO XML'), _('File path')), 'xml'),
+            ('False,CITATION.cff', ('CITATION', _('File path')), 'citation'),
+            ('False', 'LICENSE', 'license'),
+            ('False', _('repo dependency graph'), 'sbom'),
+            ('False', _('repo languages'), 'languages')
         ]
 
         return import_choices
+    
+    @property
+    def import_choice_validators(self):
+        import_choice_validators = {}
+
+        valid_extensions = {
+            'xml': '.xml',
+            'citation': '.cff'
+        }
+
+        for choice_key in ['xml', 'citation']:
+            import_choice_validators[choice_key] = {
+                'text': [validate_file_path, FilePathExtensionValidator(valid_extensions.get(choice_key))]
+            }
+        
+        return import_choice_validators
+    
+    @property
+    def import_choice_attributes(self):
+        import_choice_attributes = {}
+        for c in self.import_choices:
+            simple_checkbox = False
+            values = c[0].split(',')
+            if isinstance(values, list) and len(values) == 1:
+                simple_checkbox = True
+
+            choice_key = c[2]
+            if not simple_checkbox:
+                import_choice_attributes[choice_key] = {
+                    'text': {
+                        'placeholder': _('example_folder/example_file.extension'),
+                    }
+                }
+
+        return import_choice_attributes
 
     def render(self):
         redirect_url = self.request.build_absolute_uri()
@@ -56,12 +92,25 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             'app_type': APP_TYPE,
             'repo_display': 'block',
             'other_repo_display': 'none',
-            'form': self.get_form(self.request, GitHubImportForm, import_choices=self.import_choices)
+            'form': self.get_form(
+                self.request, 
+                GitHubImportForm, 
+                import_choices=self.import_choices,
+                import_choice_validators=self.import_choice_validators,
+                import_choice_attributes=self.import_choice_attributes
+            )
         }
         return render(self.request, 'plugins/github_import_form.html', context, status=200)
 
     def submit(self):
-        form = self.get_form(self.request, GitHubImportForm, self.request.POST, import_choices=self.import_choices)
+        form = self.get_form(
+            self.request, 
+            GitHubImportForm, 
+            self.request.POST, 
+            import_choices=self.import_choices,
+            import_choice_validators=self.import_choice_validators,
+            import_choice_attributes=self.import_choice_attributes
+        )
 
         if 'cancel' in self.request.POST:
             if self.project is None:
@@ -99,25 +148,32 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         else:
             repo = form_data['repo']
 
-        imports = {i.split(',')[0]: i.split(',')[1] for i in form_data['imports']}
+        imports = {}
+        for i in form_data['imports']:
+            i_list = i.split(',')
+            key = i_list[0]
+            value = i_list[1] if len(i_list) > 1 else None
+            imports[key] = value
 
         urls = {
             'repo': self.get_request_url(repo),
             'sbom': self.get_request_url(repo, suffix='/dependency-graph/sbom'), # only in default branch
             'languages': self.get_request_url(repo, suffix='/languages'), # only in default branch
-            # 'contents': self.get_request_url(repo, suffix='/contents')
             'xml': self.get_request_url(repo, path=imports['xml'], ref=form_data['ref']) if 'xml' in imports else None,
             'citation': self.get_request_url(repo, path=imports['citation'], ref=form_data['ref']) if 'citation' in imports else None,
             'license': self.get_request_url(repo, path=imports['license'], ref=form_data['ref']) if 'license' in imports else None,
         }
 
         selected_urls = {k:urls.get(k) for k in ['repo', *imports.keys()]}
+        print(f'selected_urls: {selected_urls}')
         return selected_urls
     
     def groupby_values(self, initial, v, groupby):
+        print(f'v.attribute.uri: {v.attribute.uri}')
+        print(f'v.text: {v.text}')
         groupby_mapping = {
             'attribute': v.attribute.uri,
-            'option': v.option.uri if v.option is not None else None,
+            'option': v.option.uri if v.option else None,
             'text': v.text.lower(),
             'set_index': v.set_index,
             'set_prefix': v.set_prefix
@@ -144,11 +200,19 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values
 
-    def get_repo_license(self, url, import_values, response=None, license_id=None):
+    def get_optionset_options(self, optionset_uri):
+        try:
+            options = OptionSet.objects.get(uri=optionset_uri).elements
+            return options
+        except KeyError:
+            logger.info('Optionset %s not in db. Skipping.', optionset_uri)
+            return []
+    
+    def get_repo_license(self, url, import_values, headers, response=None, license_id=None):
         # 1. Get license option
-        license_options = OptionSet.objects.get(uri='https://rdmorganiser.github.io/terms/options/software-license').elements
+        license_options = self.get_optionset_options('https://rdmorganiser.github.io/terms/options/software-license')
 
-        license_dict = response.json().get('license') if response is not None else {}
+        license_dict = response.json().get('license') if response else {}
         if isinstance(license_dict, dict):
             license_id = license_dict.get('spdx_id') if license_id is None else license_id
             collection_index, license_option = next(
@@ -165,20 +229,22 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         
         # 2. Create license value with correct option
         # Only append unique new license values
-        license_text = license_id if license_option.uri == 'https://rdmorganiser.github.io/terms/options/software-license/other-license' else ''
-        value = Value()
-        value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/software-license')
-        value.set_collection = False
-        value.collection_index = collection_index
-        value.text = license_text
-        value.option = license_option
+        v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/software-license')
+        if v_attribute:
+            license_text = license_id if license_option.uri == 'https://rdmorganiser.github.io/terms/options/software-license/other-license' else ''
+            value = Value()
+            value.attribute = v_attribute
+            value.set_collection = False
+            value.collection_index = collection_index
+            value.text = license_text
+            value.option = license_option
 
-        import_values = self.merge_licenses([value], import_values)
+            import_values = self.merge_licenses([value], import_values)
                 
         return import_values
     
     def get_identifier_option(self, identifier_type):
-        options = OptionSet.objects.get(uri='https://rdmorganiser.github.io/terms/options/software_identifier').elements
+        options = self.get_optionset_options('https://rdmorganiser.github.io/terms/options/software_identifier')
 
         collection_index, option = next(
             ((i, o) for i, o in enumerate(options) if o.uri.endswith(identifier_type)), 
@@ -188,6 +254,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return collection_index, option
 
     def merge_languages(self, new_language_values, import_values):
+        print('merge_languages()')
         existing_languages = [v.text.lower() for v in import_values if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/smp/language']
         
         grouped_new_language_values = reduce(partial(self.groupby_values, groupby='text'), new_language_values, {}) 
@@ -200,24 +267,30 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values
     
-    def get_repo_languages(self, url, import_values):
-        response = requests.get(url)
+    def get_repo_languages(self, url, import_values, headers):
+        print('get_repo_languages()')
+        response = requests.get(url, headers=headers)
         languages = []
         try:
             response.raise_for_status()
             languages = response.json().keys()
+            print(f'languages: {languages}')
         except:
+            print('languages response.raise_for_status()')
+            print(f'response.status_code: {response.status_code}')
             pass
 
-        new_language_values = []
-        for language in languages:            
-            value = Value()
-            value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/language')
-            value.set_collection = False
-            value.text = language
-            new_language_values.append(value)
-        
-        import_values = self.merge_languages(new_language_values, import_values)
+        v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/language')
+        if v_attribute:
+            new_language_values = []
+            for language in languages:      
+                value = Value()
+                value.attribute = v_attribute
+                value.set_collection = False
+                value.text = language
+                new_language_values.append(value)
+            
+            import_values = self.merge_languages(new_language_values, import_values)
 
         return import_values
     
@@ -293,8 +366,8 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values
     
-    def get_repo_dependencies(self, url, import_values):
-        response = requests.get(url)
+    def get_repo_dependencies(self, url, import_values, headers):
+        response = requests.get(url, headers=headers)
         try:
             response.raise_for_status()
             sbom = response.json().get('sbom')
@@ -308,7 +381,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             name = d.get('name')
             if name == repo_package_name: # repo itself is listed as package
                 continue
-            # dependencies_str += f'{name} {version}\n'
+
             dependencies_str += f'{name}\n'
 
             # version = d.get('versionInfo')
@@ -317,43 +390,51 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             )
             if isinstance(license, str):
                 license = license.split(' AND')
-                # license = "license_1, license_2 and license_3" | "license_1 and license_2" | license_1
                 license = ','.join(license[:-1]) + _(' and') + license[-1] if len(license) > 1 else license[0] 
             
-            if license is not None and license in dependency_licenses:
+            if license and license in dependency_licenses:
                 dependency_licenses[license].append(name)
-            elif license is not None and license not in dependency_licenses:
+            elif license and license not in dependency_licenses:
                 dependency_licenses[license] = [name]
         
-        if len(dependencies_str) > 0:
+        dependencies_v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/external-components')
+        if len(dependencies_str) > 0 and dependencies_v_attribute:
             dependencies_value = Value()
-            dependencies_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/external-components')
+            dependencies_value.attribute = dependencies_v_attribute
             dependencies_value.set_collection = False
             dependencies_value.text = dependencies_str
 
             import_values = self.merge_dependencies([dependencies_value], import_values)
 
-        if len(dependency_licenses) > 0:
+        dependency_licenses_v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/third-party-licenses')
+        if len(dependency_licenses) > 0 and dependency_licenses_v_attribute:
             dependency_licenses_str = ''
             for k, v in dependency_licenses.items():
                 dependency_licenses_str += f'{k} ({", ".join(v)})\n'
             
             dependency_licenses_value = Value()
-            dependency_licenses_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/third-party-licenses')
+            dependency_licenses_value.attribute = dependency_licenses_v_attribute
             dependency_licenses_value.set_collection = False
             dependency_licenses_value.text = dependency_licenses_str
 
             import_values = self.merge_dependency_licenses([dependency_licenses_value], import_values)
 
-        if len(dependencies_str) > 0 or len(dependency_licenses) > 0:
+        application_class_v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/application-class')
+        application_class_option_uri = (
+            'https://rdmorganiser.github.io/terms/options/application-class/2'
+            if len(dependency_licenses) > 0 
+            else 'https://rdmorganiser.github.io/terms/options/application-class/1'
+        )
+        application_class_option = self.get_option(application_class_option_uri)
+        if (
+            (len(dependencies_str) > 0 or len(dependency_licenses) > 0) and 
+            application_class_v_attribute and
+            application_class_option
+        ):
             application_class_value = Value()
-            application_class_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/application-class')
+            application_class_value.attribute = application_class_v_attribute
             application_class_value.set_collection = False
-            application_class_value.option = (
-                Option.objects.get(uri='https://rdmorganiser.github.io/terms/options/application-class/2')
-                if len(dependency_licenses) > 0 
-                else Option.objects.get(uri='https://rdmorganiser.github.io/terms/options/application-class/1')
-            )
+            application_class_value.option = application_class_option
             
             import_values = self.merge_application_class([application_class_value], import_values)
 
@@ -401,7 +482,10 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             [v for v in new_author_values if v.attribute.uri in employment_attributes], 
             grouped_new_author_values
         )
-
+        print('groupd_new_author_values: ')
+        for k, v in grouped_new_author_values.items():
+            print(f'key: {k}')
+            print(f'v: {[a.attribute for a in v]}')
         new_values = []
         for i, author_values_list in enumerate(grouped_new_author_values.values()):
             author_orcid = next(
@@ -409,7 +493,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 None
             )            
             if author_orcid in existing_authors_orcids:
-                print(f'    author already in import_values -> continuing')
                 continue
 
             for v in author_values_list:
@@ -435,6 +518,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return import_values, merged_new_authors
 
     def merge_identifiers(self, new_identifier_values, import_values):
+        print('merge_identifiers()')
         existing_identifier_option_uris = [v.option.uri for v in import_values if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/smp/software-pid']
         
         grouped_new_identifier_values = reduce(partial(self.groupby_values, groupby='option'), new_identifier_values, {}) 
@@ -482,62 +566,81 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return import_values
         
     def get_cff_title(self, cff_data, import_values):
-        title_value = Value()
-        title_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/project/title')
-        title_value.set_collection = False
-        title_value.text = cff_data.get('title')
-        import_values = self.merge_title([title_value], import_values)
+        cff_value = cff_data.get('title', None)
+        v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/project/title')
+
+        if cff_value and v_attribute:
+            title_value = Value()
+            title_value.attribute = v_attribute
+            title_value.set_collection = False
+            title_value.text = cff_value
+            
+            import_values = self.merge_title([title_value], import_values)
 
         return import_values
     
-    def get_cff_license(self, cff_data, import_values, url):
+    def get_cff_license(self, cff_data, import_values, url, headers):
         for _id in cff_data.get('license'):
-            import_values = self.get_repo_license(url, import_values, license_id=_id)
+            import_values = self.get_repo_license(url, import_values, headers, license_id=_id)
 
         return import_values
     
     def get_cff_authors(self, cff_data, import_values):
         author_values = []
         attributes = {
-            'family-names': 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/family-name',
-            'given-names': 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/given-name',
-            'name': 'https://rdmorganiser.github.io/terms/domain/project/partner/name',
-            'orcid': 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid',
-            'website': 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/website',
-            'affiliation': 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/affiliation'
+            'family-names': self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/family-name'),
+            'given-names': self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/given-name'),
+            'name': self.get_attribute('https://rdmorganiser.github.io/terms/domain/project/partner/name'),
+            'orcid': self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid'),
+            'website': self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/website'),
+            'affiliation': self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/affiliation')
         }
         for i, author in enumerate(cff_data.get('authors', [])):
             type = (
                 'person' 
-                if (author.get('given-names', None) is not None or author.get('family-names', None) is not None)
+                if (author.get('given-names') or author.get('family-names'))
                 else 'entity'
             )
-            set_type_value = Value()
-            set_type_value.attribute = Attribute.objects.get(uri='https://rdmo.mpdl.mpg.de/terms/domain/project/partner/type')
-            set_type_value.set_index = i
-            set_type_value.set_collection = True
-            option_uri = (
-                'https://rdmo.mpdl.mpg.de/terms/options/partner-types/person'
-                if type == 'person'
-                else 'https://rdmo.mpdl.mpg.de/terms/options/partner-types/entity'
-            )
-            set_type_value.option = Option.objects.get(uri=option_uri)            
-            author_values.append(set_type_value)
 
+            set_v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/project/partner/id')
+            if set_v_attribute is None:
+                continue
 
+            # SET VALUE
             set_label = (
-                f'{author.get("given-names", "")} {author.get("family-names", "")}'
+                f'{author.get("given-names", "")} {author.get("family-names", "")}'.replace('None', '').strip()
                 if type == 'person'
-                else author.get('name', '')
+                else author.get('name', None)
             )
+            set_label = set_label if (set_label and set_label != '') else f'cff author # {i+1}'
             set_id_value = Value()
-            set_id_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/project/partner/id')
+            set_id_value.attribute = set_v_attribute
             set_id_value.set_index = i
             set_id_value.set_collection = True
             set_id_value.text = set_label            
             author_values.append(set_id_value)
+
+            # TYPE VALUE
+            type_v_attribute = self.get_attribute('https://rdmo.mpdl.mpg.de/terms/domain/project/partner/type')
+            option_uri = (
+                    'https://rdmo.mpdl.mpg.de/terms/options/partner-types/person'
+                    if type == 'person'
+                    else 'https://rdmo.mpdl.mpg.de/terms/options/partner-types/entity'
+                )
+            type_v_option = self.get_option(option_uri)
+            if type_v_attribute and type_v_option:
+                set_type_value = Value()
+                set_type_value.attribute = type_v_attribute
+                set_type_value.set_index = i
+                set_type_value.set_collection = True
+                set_type_value.option = type_v_option            
+                author_values.append(set_type_value)
+            
             
             for k, v in author.items():
+                if v is None:
+                    continue
+
                 # no SMP field for name or orcid for an author of type person, but possible by cff schema
                 if (
                     ((k == 'name' or k == 'website') and type == 'person') or
@@ -545,20 +648,21 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 ):
                     continue
 
-                if k in attributes and k != 'affiliation':
+                v_attribute = attributes.get(k)
+                if k in attributes and k != 'affiliation' and v_attribute:
                     author_value = Value()
-                    author_value.attribute = Attribute.objects.get(uri=attributes.get(k))
+                    author_value.attribute = v_attribute
                     author_value.set_index = i
                     author_value.set_collection = True
                     author_value.text = v
                     author_values.append(author_value)
                 
-                elif k == 'affiliation':
+                elif k == 'affiliation' and v_attribute:
                     cff_a_str = v
                     affiliations = cff_a_str.split(' & ')
                     for j, a in enumerate(affiliations):
                         affiliation_value = Value()
-                        affiliation_value.attribute = Attribute.objects.get(uri=attributes.get(k))
+                        affiliation_value.attribute = v_attribute
                         affiliation_value.set_prefix = str(i) # set_prefix is a string field
                         affiliation_value.set_index = j
                         affiliation_value.set_collection = True
@@ -584,16 +688,21 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         identifier_values = []
         for identifier in _identifiers:
+            value = identifier.get('value', None)
+            if value is None:
+                continue
+
             identifier_type = identifier.get('type')
             collection_index, identifier_option = self.get_identifier_option(identifier_type)
-            
-            identifier_value = Value()
-            identifier_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/software-pid')
-            identifier_value.set_collection = False
-            identifier_value.collection_index = collection_index
-            identifier_value.text = identifier.get('value')
-            identifier_value.option = identifier_option
-            identifier_values.append(identifier_value)
+            v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/software-pid')
+            if identifier_option and v_attribute:
+                identifier_value = Value()
+                identifier_value.attribute = v_attribute
+                identifier_value.set_collection = False
+                identifier_value.collection_index = collection_index
+                identifier_value.text = value
+                identifier_value.option = identifier_option
+                identifier_values.append(identifier_value)
 
         found_new_identifiers = False
         if len(identifier_values) > 0:
@@ -601,24 +710,29 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values, found_new_identifiers
     
-    def get_repo_citation_file(self, url, import_values):
+    def get_repo_citation_file(self, url, import_values, headers):
         # https://github.com/citation-file-format/citation-file-format/blob/main/schema-guide.md
         cff_data = {}
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         try:
             response.raise_for_status()
             encoded_content = response.json().get('content')
             decoded_bytes = base64.b64decode(encoded_content)
             content = decoded_bytes.decode('utf-8')
+            print(f'content: {content}')
             cff_data = yaml.safe_load(content)
+            print(f'cff_data: {cff_data}')
         except:
+            print('citation file reponse.raise_for_status()')
+            print(f'response.status_code: {response.status_code}')
             pass
         
+        print(f'cff_data: {cff_data}')
         if 'title' in cff_data:
             import_values = self.get_cff_title(cff_data, import_values)
 
         if 'license' in cff_data:
-            import_values = self.get_cff_license(cff_data, import_values, url)
+            import_values = self.get_cff_license(cff_data, import_values, url, headers)
 
         found_new_authors = False
         if 'authors' in cff_data:
@@ -628,15 +742,22 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         if 'identifiers' in cff_data or 'doi' in cff_data or 'url' in cff_data:
             import_values, found_new_identifiers = self.get_cff_identifiers(cff_data, import_values)
         
-        if found_new_authors or found_new_identifiers:
-            application_class_value = Value()
-            application_class_value.attribute = Attribute.objects.get(uri='https://rdmorganiser.github.io/terms/domain/smp/application-class')
-            application_class_value.set_collection = False
-            application_class_value.option = (
-                Option.objects.get(uri='https://rdmorganiser.github.io/terms/options/application-class/2')
+        application_class_v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/smp/application-class')
+        application_class_option_uri = (
+                'https://rdmorganiser.github.io/terms/options/application-class/2'
                 if found_new_authors
-                else Option.objects.get(uri='https://rdmorganiser.github.io/terms/options/application-class/1')
+                else 'https://rdmorganiser.github.io/terms/options/application-class/1'
             )
+        application_class_option = self.get_option(application_class_option_uri)
+        if (
+            (found_new_authors or found_new_identifiers) and 
+            application_class_v_attribute and 
+            application_class_option
+        ):
+            application_class_value = Value()
+            application_class_value.attribute = application_class_v_attribute
+            application_class_value.set_collection = False
+            application_class_value.option = application_class_option
             import_values = self.merge_application_class([application_class_value], import_values)
 
         return import_values
@@ -665,9 +786,12 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         
         return import_values
            
-    def get_xml_values(self, url, import_values, xml_import_plugin):
+    def get_xml_values(self, url, import_values, headers, xml_import_plugin):
+        if xml_import_plugin is None:
+            return import_values
+        
         # if xml values have old attributes that do not exist in catalog anymore v.attribute == None
-        new_values = [v for v in xml_import_plugin.values if v.attribute is not None]
+        new_values = [v for v in xml_import_plugin.values if v.attribute]
         xml_import_plugin.values = new_values
         
         if len(import_values) == 0:
@@ -675,11 +799,13 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         
         author_attribute_uris = [
             'https://rdmorganiser.github.io/terms/domain/project/partner/id',
+            'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/type',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/family-name',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/given-name',
-            'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/name',
+            'https://rdmorganiser.github.io/terms/domain/project/partner/name',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid-autocomplete',
+            'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/website',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/role',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/affiliation',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/affiliation/ror-autocomplete',
@@ -700,23 +826,23 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         grouped_xml_values['authors'] = [v for v in xml_import_plugin.values if v.attribute.uri in author_attribute_uris]
 
         for uri, xml_values_list in grouped_xml_values.items():
-            # print(f'uri: {uri}')
             if uri not in grouped_import_values.keys():
-                # print(f'    uri not yet in grouped_import_values')
                 import_values.extend(xml_values_list)
             else:
-                # print(f'    uri already in grouped_import_values -> merging')
                 import_values = self.merge_xml_values(uri, xml_values_list, import_values)
 
         return import_values
     
-    def get_import_values(self, repo_response, xml_import_plugin, request_urls):
+    def get_import_values(self, headers, repo_response, xml_import_plugin, request_urls):
         '''Return a list with Value() instances to create an xml with all the info
         from the selected repository.
         
         If the user fills out the path to an RDMO xml file (optional), its Value() instances
         will have precedence over information in the repository.
         '''
+
+        # access_token = self.get_from_session(request, 'access_token')
+        # headers = self.get_authorization_headers(access_token)
         
         functions = {
             'sbom': {
@@ -748,11 +874,11 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         import_values = []
         for k, url in request_urls.items():
             f, f_kwargs = functions[k].values()
-            import_values = f(url, import_values, **f_kwargs)
+            import_values = f(url, import_values, headers, **f_kwargs)
             
         return import_values
 
-    def get_import_project(self, repo_response, request_urls):
+    def get_import_project(self, headers, repo_response, request_urls):
         '''Return a Project() instance that will be the basis to create an xml with all the info
         from the selected repository. 
         
@@ -760,10 +886,13 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         will have its information. If no file path is filled out, the Project() instance will be created from scratch.
         '''
 
-        catalog = self.current_project.catalog if self.current_project else Catalog.objects.get(uri='https://rdmorganiser.github.io/terms/questions/smp')
+        catalog = (
+            self.current_project.catalog if self.current_project 
+            else Catalog.objects.get(uri='https://rdmorganiser.github.io/terms/questions/smp')
+        )
         title = (
             repo_response.json().get('html_url').split('/')[-1] 
-            if repo_response.json().get("html_url") is not None
+            if repo_response.json().get("html_url")
             else _('GitHub Import')
         )
         import_project = Project(
@@ -773,7 +902,8 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         xml_import_plugin = None
         
         if 'xml' in request_urls:
-            xml_response = requests.get(request_urls['xml'])
+            # print(f"xml url: {request_urls['xml']}")
+            xml_response = requests.get(request_urls['xml'], headers=headers)
 
             try:
                 xml_response.raise_for_status()
@@ -787,7 +917,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                         xml_import_plugin.process()
                         import_project = (
                             xml_import_plugin.project 
-                            if xml_import_plugin.project is not None 
+                            if xml_import_plugin.project
                             else Project( # new Project() because xml_import_plugin.project is None
                                 catalog=xml_import_plugin.catalog, # xml_import_plugin.catalog == self.current_project.catalog
                                 title='bla' # does not matter since updating existing project
@@ -797,30 +927,71 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                         pass
             
             except:
+                print('xml_response.raise_for_status()')
+                print(f'response status: {xml_response.status_code}')
                 pass
 
         return import_project, xml_import_plugin
     
+    def get_questionsets(self, catalog):
+            queryset = QuestionSet.objects.filter_by_catalog(catalog) \
+                                    .select_related('attribute') \
+                                    .order_by('attribute__uri')
+
+            questionsets = {}
+            for questionset in queryset:
+                if questionset.attribute and questionset.attribute.uri not in questionsets:
+                    questionsets[questionset.attribute.uri] = questionset
+            return questionsets
+    
+    def get_pages(self, catalog):
+            queryset = Page.objects.filter_by_catalog(catalog) \
+                                    .select_related('attribute') \
+                                    .order_by('attribute__uri')
+
+            pages = {}
+            for page in queryset:
+                if page.attribute and page.attribute.uri not in pages:
+                    pages[page.attribute.uri] = page
+            return pages
+    
     def create_import_xml_file(self, request, import_project, import_values, xml_import_plugin, request_urls):
-        # 1. If Value() for title (title_value) exists and title_value != import_project.title, update import_project.title if first import source was xml
-        title = next((v.text for v in import_values if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/project/title'), None)
+        # 1. If Value() for title (title_value) exists and title_value != import_project.title, 
+        # update import_project.title if first import source was xml
+        title = next(
+            (v.text for v in import_values if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/project/title'), 
+            None
+        )
         first_import_source = list(request_urls.keys())[0]
-        if title is not None and title != import_project.title and first_import_source != 'xml':
+        if title and title != import_project.title and first_import_source != 'xml':
             import_project.title = title
 
+        # 2. Keep only values with a corresponding question, question set or page (attribute) 
+        # in import_project.catalog
+        catalog_questions = self.get_questions(import_project.catalog)
+        catalog_questionsets = self.get_questionsets(import_project.catalog)
+        catalog_pages = self.get_pages(import_project.catalog)
+        # import_values = [
+        #     v for v in import_values if (
+        #         catalog_questions.get(v.attribute.uri) or
+        #         catalog_questionsets.get(v.attribute.uri) or
+        #         catalog_pages.get(v.attribute.uri)
+        #     )
+        # ]
+        
         checked = [
             f'{v.attribute.uri}[{v.set_prefix}][{v.set_index}][{v.collection_index}]'
             for v in import_values
         ]
 
-        snapshots = xml_import_plugin.snapshots if xml_import_plugin is not None else []
+        snapshots = xml_import_plugin.snapshots if xml_import_plugin else []
         self.update_values(None, import_project.catalog, import_values, snapshots)
 
         import_project.site = get_current_site(request)
         import_project.save()
 
-        tasks = xml_import_plugin.tasks if xml_import_plugin is not None else []
-        views = xml_import_plugin.views if xml_import_plugin is not None else []
+        tasks = xml_import_plugin.tasks if xml_import_plugin else []
+        views = xml_import_plugin.views if xml_import_plugin else []
         save_import_values(import_project, import_values, checked)
         save_import_snapshot_values(import_project, snapshots, checked)
         save_import_tasks(import_project, tasks)
@@ -830,7 +1001,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         xml_export_plugin.project = import_project
         xml_response = xml_export_plugin.render()
         
-        # Value.objects.filter(project=import_project).delete()
         Project.objects.filter(pk=import_project.id).delete()
 
         return xml_response
@@ -838,15 +1008,22 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
     def get_success(self, request, response):
         request_urls = self.pop_from_session(self.request, 'request_urls')
 
-        # 1. Create (or extract from repo xml file) Project() instance
-        import_project, xml_import_plugin = self.get_import_project(response, request_urls)
+        access_token = self.get_from_session(request, 'access_token')
+        headers = self.get_authorization_headers(access_token)
+        # print(f'headers: {headers}')
 
+        # 1. Create (or extract from repo xml file) Project() instance
+        import_project, xml_import_plugin = self.get_import_project(headers, response, request_urls)
+        print(f'import_project: {import_project}, xml_import_plugin: {xml_import_plugin}')
         # 2. Create Value() instances for all import data found in repo (and repo xml file if exists)
-        import_values = self.get_import_values(response, xml_import_plugin, request_urls)
-        
+        import_values = self.get_import_values(headers, response, xml_import_plugin, request_urls)
+        print(f'import_values: {len(import_values)}')
+        # for v in import_values:
+        #     print(f'v.attribute: {v.attribute}')
+        #     print(f'v.text: {v.text}')
         # 3. Create xml file with all info from repo (and from xml file in repo if exists)
         xml_response = self.create_import_xml_file(request, import_project, import_values, xml_import_plugin, request_urls)
-
+        print(f'xml_response: {xml_response.status_code}')
         # 4. Pass newly created xml file with all repo imports to ProjectUpdateImportView or ProjectCreateImportView
         request.session['import_file_name'] = handle_fetched_file(xml_response.content)
 
