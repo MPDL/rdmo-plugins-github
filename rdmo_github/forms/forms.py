@@ -1,9 +1,11 @@
 from django import forms
+from django.templatetags.static import static
+from django.utils.html import format_html
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .custom_fields import CustomMultipleChoiceField
-from .custom_validators import validate_new_repo_name, validate_import_file_path
+from rdmo_maus.forms.custom_fields import MultivalueCheckboxMultipleChoiceField
+from .custom_validators import validate_new_repo_name
 
 class GithubBaseForm(forms.Form):
     def __init__(self, *args, **kwargs):
@@ -21,20 +23,24 @@ class GithubBaseForm(forms.Form):
 class GitHubExportForm(GithubBaseForm):
     def __init__(self, *args, **kwargs):
         export_choices = kwargs.pop('export_choices', None)
-        export_choices_to_update = kwargs.pop('export_choices_to_update', None)
+        export_choice_validators = kwargs.pop('export_choice_validators', None)
+        export_choice_attributes = kwargs.pop('export_choice_attributes', None)
+        export_choice_warnings = kwargs.pop('export_choice_warnings', None)
         super().__init__(*args, **kwargs)
-
-        if export_choices_to_update is not None:
-            self.fields['exports'].choices_to_update = export_choices_to_update
-            self.fields['exports'].help_text = _('Warning: Existing content in GitHub will be overwritten. To avoid this, consider updating the file path or the branch.')
 
         if export_choices is not None:
             self.fields['exports'].choices = export_choices
-            self.fields['exports'].choice_names = [c[1][1] for c in export_choices]
-            self.fields['all_exports'].widget = forms.CheckboxInput(
-                attrs={'onclick': f'select_all_exports({len(export_choices)})'}
-            )
-            self.fields['branch'].widget = forms.TextInput(attrs={'oninput': f'hide_check_messages(this, {len(export_choices)})'})
+            self.fields['branch'].widget = forms.TextInput(attrs={'oninput': f'hideAllChoiceWarningMessages(this, {len(export_choices)})'})
+
+        if export_choice_validators is not None:
+            self.fields['exports'].choice_validators = export_choice_validators
+
+        if export_choice_attributes is not None:
+            self.fields['exports'].widget.choice_attributes = export_choice_attributes
+
+        if export_choice_warnings is not None:
+            self.fields['exports'].widget.choice_warnings = export_choice_warnings
+            self.fields['exports'].help_text = _('Warning: Existing content in GitHub will be overwritten. To avoid this, consider updating the file path or the branch.')
 
     new_repo = forms.BooleanField(
         label=_('Create new repository'),
@@ -49,6 +55,7 @@ class GitHubExportForm(GithubBaseForm):
         label=_('Name for the new repository'),
         help_text=_('Unique name for the new repository. No other of your repositories may have the same name, otherwise the export will fail.'),
         required=False,
+        widget=forms.TextInput(attrs={'placeholder': _('example-repo-name')}),
         validators=[validate_new_repo_name]
     )
 
@@ -58,16 +65,10 @@ class GitHubExportForm(GithubBaseForm):
         widget=forms.RadioSelect
     )
 
-    exports = CustomMultipleChoiceField(
+    exports = MultivalueCheckboxMultipleChoiceField(
         label=_('Export choices'),
         help_text=_('Warning: Existing content in GitHub will be overwritten.'),
-        # option_template_name='plugins/exports_multivalue_select_option.html',
-        # template_name='plugins/exports_multivalue_select.html'
-    )
-
-    all_exports = forms.BooleanField(
-        label=_('Select all export choices'),
-        required=False,
+        include_select_all_choice=True
     )
 
     branch = forms.CharField(
@@ -77,6 +78,9 @@ class GitHubExportForm(GithubBaseForm):
     )
 
     commit_message = forms.CharField(label=_('Commit message'))
+
+    class Media:
+        js = [format_html('<script src="{}" defer ></script>', static('plugins/js/github_form.js'))]
 
     def clean(self):
         super().clean()
@@ -94,11 +98,23 @@ class GitHubExportForm(GithubBaseForm):
 class GitHubImportForm(GithubBaseForm):
     def __init__(self, *args, **kwargs):
         import_choices = kwargs.pop('import_choices', None)
+        import_choice_warnings = kwargs.pop('import_choice_warnings', None)
+        import_choice_validators = kwargs.pop('import_choice_validators', None)
+        import_choice_attributes = kwargs.pop('import_choice_attributes', None)
         super().__init__(*args, **kwargs)
 
         if import_choices is not None:
             self.fields['imports'].choices = import_choices
-            self.fields['imports'].choice_names = [c[1][1] for c in import_choices]
+
+        if import_choice_validators is not None:
+            self.fields['imports'].choice_validators = import_choice_validators
+
+        if import_choice_attributes is not None:
+            self.fields['imports'].widget.choice_attributes = import_choice_attributes
+
+        if import_choice_warnings is not None:
+            self.fields['imports'].widget.choice_warnings = import_choice_warnings
+
 
     other_repo_check = forms.BooleanField (
         label=_('Use other repository'),
@@ -119,7 +135,7 @@ class GitHubImportForm(GithubBaseForm):
         required=False
     )
 
-    imports = CustomMultipleChoiceField(
+    imports = MultivalueCheckboxMultipleChoiceField(
         label=_('Import choices'),
         help_text=_('Select the choices you want to import from. Once they are in the gray box, move them to prioritize them.'),
         sortable=True
@@ -129,6 +145,9 @@ class GitHubImportForm(GithubBaseForm):
         label=_('Branch, tag, or commit'), 
         initial='main'
     )
+
+    class Media:
+        js = [format_html('<script src="{}" defer ></script>', static('plugins/js/github_form.js'))]
 
     def clean(self):
         super().clean()
@@ -141,3 +160,5 @@ class GitHubImportForm(GithubBaseForm):
         
         if not other_repo_check and repo == '':
             self.add_error('repo', ValidationError(_('A GitHub repository is required.'), code='required'))
+
+    
