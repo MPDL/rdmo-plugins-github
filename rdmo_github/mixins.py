@@ -50,7 +50,7 @@ class GitHubProviderMixin(OauthProviderMixin):
     
     def get_authorization_headers(self, access_token):
         return {
-            'Authorization': f'token {access_token}',
+            'Authorization': f'Bearer {access_token}',
             'Accept': 'application/vnd.github+json'
         }
 
