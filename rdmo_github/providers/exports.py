@@ -147,7 +147,6 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             export_choice_warnings = self.get_from_session(self.request, 'github_export_choice_warnings')
-            # print(f'export_choice_warnings: {export_choice_warnings}')
             new_repo = form.cleaned_data['new_repo']
             if not new_repo and export_choice_warnings is None:
                 context, export_choice_warnings = self.validate_export_choices(form.cleaned_data)
@@ -156,7 +155,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                     return render(self.request, 'plugins/github_export_form.html', context, status=200)
             
             # 2. Create file content for selected choices and export them
-            request_data, repo_html_url = self.process_form_data(form.cleaned_data, export_choice_warnings)
+            request_data, repo_html_url = self.process_form_data(form.cleaned_data)
             
             if repo_html_url is not None:
                 self.store_in_session(self.request, 'github_export_repo', repo_html_url)
@@ -197,17 +196,17 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             if stored_sha != github_sha:
                 set_record_id_on_project_value(project, github_sha, export_choice)
-                logger.warning(f'Updating stored sha: stored value for export choice "{export_choice}" does not match with corresponding sha from github.')
+                logger.warning(f'GitHubExportProvider - Updating stored sha: stored value for export choice "{export_choice}" does not match with corresponding sha from github.')
 
             return github_sha
             
         elif response.status_code == 404:
-            logger.error(f'No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
+            logger.error(f'GitHubExportProvider - No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
             # the export_choice does not exist in GitHub, delete the corresponding sha from the project.value.text
             clear_record_id_from_project_value(project, export_choice)
         else:
             # Log any other unexpected response code
-            logger.error(f'Error validating sha for export choice "{export_choice}": {response.status_code}')
+            logger.error(f'GitHubExportProvider - Error validating sha for export choice "{export_choice}": {response.status_code}')
 
     def check_file_paths(self, exports, repo, branch):
         access_token = self.get_from_session(self.request, 'access_token')
@@ -219,7 +218,6 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             url = self.get_request_url(repo, path=file_path, ref=branch)
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
-            # choice_in_repo = True if sha is not None else False
             if sha:
                 export_choice_warnings[choice_key] = [gettext('A file with the same path exists in repo and will be overwritten')]
 
@@ -250,8 +248,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             'new_repo_name_display': 'none',
             'repo_display': 'block',
             'form': form
-        }             
-        # return render(self.request, 'plugins/github_export_form.html', context, status=200)
+        }
         return context, export_choice_warnings
 
     def render_export(self, choice_key):
@@ -273,12 +270,13 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             base64_string_of_content = base64_bytes_of_content.decode('utf-8')
             choice_content = base64_string_of_content
         except:
-            logger.warning(f'No content created for {choice_key}')
+            logger.warning(f'GitHubExportProvider - No content created for {choice_key}')
             choice_content = None
 
         return choice_content
     
-    def process_form_data(self, form_data, export_choice_warnings, update_without_warning=False):
+    def process_form_data(self, form_data, update_without_warning=False):
+        self.pop_from_session(self.request, 'github_export_choice_warnings')
         request_data = []
 
         # REPO
@@ -311,7 +309,6 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             branch = 'main' if new_repo else form_data['branch']
             if file_path != initial_file_path or branch != initial_branch:
                 new_export_choice_warnings, __, ___, ____ = self.check_file_paths([e], form_data['repo'], branch)
-                export_choice_warnings[choice_key] = new_export_choice_warnings[choice_key]
                 if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
                     processed_exports.append({
                         'key': choice_key,
@@ -354,7 +351,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         successfully_processed_exports = list(filter(lambda x: x['success'] == True, processed_exports))
         if len(successfully_processed_exports) == 0:
-            logger.warning(f'No export content could be created for the selected choices: {exports}.')
+            logger.warning(f'GitHubExportProvider - No export content could be created for the selected choices: {exports}.')
             return None, None
 
         self.store_in_session(self.request, 'github_processed_exports', processed_exports)
@@ -372,8 +369,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             try:
                 response.raise_for_status()
             except Exception as e:
-                logger.error(f'Error putting {choice_key} to github: {e}')
-                choice_label = next((c[1][0] for c in self.export_choices if c[1][1] == choice_key), choice_key)
+                logger.error(f'GitHubExportProvider - Error putting {choice_key} to github: {e}')
+                choice_label = next((c[1][0] for c in self.export_choices if c[2] == choice_key), choice_key)
                 index, status = next(
                     ((i, s) for i, s in enumerate(processed_exports) if s['key'] == choice_key), 
                     (   
