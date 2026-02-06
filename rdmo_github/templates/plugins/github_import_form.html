@@ -1,15 +1,9 @@
 {% extends 'projects/project_import_form.html' %}
-{% load i18n core_tags compress static %}
+{% load i18n core_tags %}
 
 {% block head %}
-    {% compress js %}
-    <script type="text/javascript" src="{% static 'plugins/js/github_import_form.js' %}" defer></script>
-    {% endcompress %}
-
-    {% compress css %}
-    <link rel="stylesheet" href="{% static 'plugins/css/github_import_form.css' %}">
-    {% endcompress %}
-{% endblock %}
+    {{ form.media }}
+    {% endblock %}
 
 {% block page %}
 

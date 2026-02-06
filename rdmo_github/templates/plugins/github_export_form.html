@@ -1,17 +1,15 @@
 {% extends 'core/page.html' %}
-{% load i18n core_tags compress static %}
+{% load i18n core_tags %}
 
 {% block head %}
-    {% compress js %}
-    <script type="text/javascript" src="{% static 'plugins/js/github_export_form.js' %}" ></script>
-    {% endcompress %}
+    {{ form.media }}
 {% endblock %}
 
 {% block page %}
 
     <h1>{% blocktrans %}Export to GitHub{% endblocktrans %}</h1>
 
-    {% bootstrap_form submit=submit_label %}
+    {% bootstrap_form submit=_('Export to GitHub') %}
 
     <style>
         .form-group.field-new_repo_name {
