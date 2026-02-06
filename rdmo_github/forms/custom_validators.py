@@ -1,5 +1,6 @@
 import re
 
+from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
@@ -56,7 +57,7 @@ def validate_new_repo_name(value):
 
     return validate_text_field(field_name, value, min_length, max_length, not_allowed_pattern, allowed_char_name_str)
 
-def validate_export_file_path(value):
+def validate_file_path(value):
     field_name = _('File path')
     min_length = 6
     max_length = 100
@@ -65,9 +66,15 @@ def validate_export_file_path(value):
 
     return validate_text_field(field_name, value, min_length, max_length, not_allowed_pattern, allowed_char_name_str)
 
-def validate_import_file_path(value):
-    if not value.endswith('.xml'):
-        raise ValidationError(
-            _('File must be in XML format.'),
-            code='invalid'
-        )
+@deconstructible
+class FilePathExtensionValidator:
+
+    def __init__(self, valid_extension: str):
+        self.valid_extension = valid_extension
+
+    def __call__(self, value):
+        if not value.endswith(self.valid_extension):
+            raise ValidationError(
+                _('File must be in {valid_extension} format.').format(valid_extension=self.valid_extension),
+                code='invalid'
+            )
