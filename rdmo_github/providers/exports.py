@@ -399,6 +399,10 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             request_data = [{**json, 'url': json['url'].replace('repo_placeholder', repo)} for json in request_data]
             processed_exports = self.put_data(request, request_data, processed_exports)
         
+        successful_exports = list(filter(lambda x: x['success'] == True, processed_exports))
+        if len(successful_exports) == len(processed_exports):
+            return redirect(repo_html_url)
+
         context = {'repo_html_url': repo_html_url, 'processed_exports': processed_exports}
         return render(request, 'plugins/github_export_success.html', context, status=200)
                 
@@ -409,6 +413,10 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         if isinstance(request_data , list):
             processed_exports = self.put_data(request, request_data, processed_exports)
+
+        successful_exports = list(filter(lambda x: x['success'] == True, processed_exports))
+        if len(successful_exports) == len(processed_exports):
+            return redirect(repo_html_url)
         
         context = {'repo_html_url': repo_html_url, 'processed_exports': processed_exports}
         return render(request, 'plugins/github_export_success.html', context, status=200)
