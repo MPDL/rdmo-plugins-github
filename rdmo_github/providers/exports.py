@@ -219,7 +219,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
             if sha:
-                export_choice_warnings[choice_key] = [gettext('A file with the same path exists in repo and will be overwritten')]
+                export_choice_warnings[choice_key] = [gettext('A file with the same path exists in the selected repository and will be overwritten')]
 
         return export_choice_warnings, choice_keys, exports, branch
     
