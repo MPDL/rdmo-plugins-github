@@ -2,13 +2,13 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 10:21+0000\n"
+"POT-Creation-Date: 2026-02-13 15:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -56,7 +56,7 @@ msgid "alphanumeric, hyphen, underscore, and period"
 msgstr "alphanumerisch, Bindestrich, Unterstrich und Punkt"
 
 #: forms/custom_validators.py:61 providers/exports.py:42
-#: providers/imports.py:36 providers/imports.py:37
+#: providers/imports.py:37 providers/imports.py:38
 msgid "File path"
 msgstr "Dateipfad"
 
@@ -65,6 +65,7 @@ msgid "alphanumeric, slash, hyphen, underscore, and period"
 msgstr "alphanumerisch, Slash, Bindestrich, Unterstrich und Punkt"
 
 #: forms/custom_validators.py:78
+#, python-brace-format
 msgid "File must be in {valid_extension} format."
 msgstr "Die Datei muss im {valid_extension}-Format vorliegen."
 
@@ -156,7 +157,9 @@ msgstr "Optionen zum Importieren"
 msgid ""
 "Select the choices you want to import from. Once they are in the gray box, "
 "move them to prioritize them."
-msgstr "Wählen Sie die Optionen aus, die Sie importieren möchten. Sobald sie sich im grauen Bereich befinden, verschieben Sie sie, um sie zu priorisieren."
+msgstr ""
+"Wählen Sie die Optionen aus, die Sie importieren möchten. Sobald sie sich im "
+"grauen Bereich befinden, verschieben Sie sie, um sie zu priorisieren."
 
 #: forms/forms.py:145
 msgid "Branch, tag, or commit"
@@ -219,7 +222,7 @@ msgstr ""
 "hinzuzufügen, aktualisieren Sie das Repositorium und laden Sie diese Seite "
 "neu."
 
-#: providers/exports.py:28 providers/imports.py:36
+#: providers/exports.py:28 providers/imports.py:37
 msgid "RDMO XML"
 msgstr "RDMO XML"
 
@@ -235,7 +238,7 @@ msgstr "CSV (Semikolon getrennt)"
 msgid "JSON"
 msgstr "JSON"
 
-#: providers/exports.py:101 providers/imports.py:74
+#: providers/exports.py:101 providers/imports.py:75
 msgid "example_folder/example_file.extension"
 msgstr "beispiel_ordner/beispiel_datei.dateikennung"
 
@@ -252,8 +255,12 @@ msgstr ""
 "Repositorium wäre ohne Warnung überschrieben worden."
 
 #: providers/exports.py:222
-msgid "A file with the same path exists in the selected repository and will be overwritten"
-msgstr "Eine Datei mit demselben Pfad existiert im ausgewälten Repositorium und wird überschrieben"
+msgid ""
+"A file with the same path exists in the selected repository and will be "
+"overwritten"
+msgstr ""
+"Eine Datei mit demselben Pfad existiert im ausgewälten Repositorium und wird "
+"überschrieben"
 
 #: providers/exports.py:317
 msgid "not exported - it would have overwritten existing file in repository."
@@ -299,43 +306,44 @@ msgid "The secret for a GitHub webhook to close a task (optional)."
 msgstr ""
 "Das 'secret' für einen GitHub-Webhook zum Schließen einer Aufgabe (optional)."
 
-#: providers/imports.py:39
-#, fuzzy
-#| msgid "Repository name"
+#: providers/imports.py:40
 msgid "Repository dependency graph"
 msgstr "Abhängigkeitsgraph des Repositoriums"
 
-#: providers/imports.py:40
+#: providers/imports.py:41
 msgid "Repository languages"
 msgstr "Sprachen des Repositoriums"
 
-#: providers/imports.py:137 providers/imports.py:193
+#: providers/imports.py:138 providers/imports.py:194
 msgid "Import error"
 msgstr "Fehler beim Import"
 
-#: providers/imports.py:138
+#: providers/imports.py:139
 msgid "No values for this project's catalog were found."
 msgstr "Es wurden keine Werte für den Katalog dieses Projektes gefunden."
 
-#: providers/imports.py:194
+#: providers/imports.py:195
 msgid "None of the import choices exists or could be requested."
-msgstr "Die Importoptionen existieren nicht oder konnten nicht angefragt werden"
+msgstr ""
+"Die Importoptionen existieren nicht oder konnten nicht angefragt werden"
 
-#: providers/imports.py:247
+#: providers/imports.py:248
 msgid ""
 "There is no file with this path in the selected repository or it cannot be "
 "requested"
-msgstr "Eine Datei mit diesem Pfad existiert im ausgewälten Repositorium nicht oder sie kann nicht angefragt werden"
+msgstr ""
+"Eine Datei mit diesem Pfad existiert im ausgewälten Repositorium nicht oder "
+"sie kann nicht angefragt werden"
 
-#: providers/imports.py:249
+#: providers/imports.py:250
 msgid "Repository endpoint cannot be requested"
 msgstr "Der Repositorium-Endpunkt kann nicht angefragt werden"
 
-#: providers/imports.py:508
+#: providers/imports.py:530
 msgid " and"
 msgstr " und"
 
-#: providers/imports.py:1017
+#: providers/imports.py:1138
 msgid "GitHub Import"
 msgstr "GitHub-Import"
 
@@ -368,7 +376,9 @@ msgstr "Diese Importoptionen konnten nicht angefragt werden"
 msgid ""
 "You could either import the rest of the values found in the repository or "
 "cancel the process."
-msgstr "Sie können den Rest der im Repositorium gefundenen Werte importieren oder den Prozess abbrechen."
+msgstr ""
+"Sie können den Rest der im Repositorium gefundenen Werte importieren oder "
+"den Prozess abbrechen."
 
 #: templates/plugins/github_import_success.html:28
 msgid "Import anyway"
