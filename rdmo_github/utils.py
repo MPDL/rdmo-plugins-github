@@ -2,11 +2,58 @@ import logging
 
 from rdmo.domain.models import Attribute
 from rdmo.projects.models.value import Value
+from rdmo.options.models import OptionSet
+from rdmo.questions.models import Page, QuestionSet
 
 logger = logging.getLogger(__name__)
 
 attribute_uri_prefix = "https://rdmo.mpdl.mpg.de/terms"
 attribute_sha_uri_key_prefix = "project/metadata/publication/github/sha/"
+
+def groupby_values(initial, v, groupby):
+    groupby_mapping = {
+        'attribute': v.attribute.uri,
+        'option': v.option.uri if v.option else None,
+        'text': v.text.lower(),
+        'set_index': v.set_index,
+        'set_prefix': v.set_prefix
+    }
+    _groupby = str(groupby_mapping[groupby])
+    if _groupby not in initial.keys():
+        initial[_groupby] = [v]
+    else:
+        initial[_groupby].append(v)
+    return initial
+
+def get_optionset_options(optionset_uri):
+        try:
+            options = OptionSet.objects.get(uri=optionset_uri).elements
+            return options
+        except KeyError:
+            logger.info('Optionset %s not in db. Skipping.', optionset_uri)
+            return []
+        
+def get_questionsets(catalog):
+    queryset = QuestionSet.objects.filter_by_catalog(catalog) \
+                            .select_related('attribute') \
+                            .order_by('attribute__uri')
+
+    questionsets = {}
+    for questionset in queryset:
+        if questionset.attribute and questionset.attribute.uri not in questionsets:
+            questionsets[questionset.attribute.uri] = questionset
+    return questionsets
+
+def get_pages(catalog):
+    queryset = Page.objects.filter_by_catalog(catalog) \
+                            .select_related('attribute') \
+                            .order_by('attribute__uri')
+
+    pages = {}
+    for page in queryset:
+        if page.attribute and page.attribute.uri not in pages:
+            pages[page.attribute.uri] = page
+    return pages
 
 def get_project_value_with_record_id(project, export_format):
     record_id_attribute, _created = Attribute.objects.get_or_create(uri_prefix=attribute_uri_prefix,
