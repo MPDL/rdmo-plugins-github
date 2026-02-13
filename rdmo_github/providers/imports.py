@@ -11,10 +11,10 @@ from django.shortcuts import redirect, render
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.translation import gettext, gettext_lazy as _
 
-from rdmo.options.models import OptionSet
+
 from rdmo.projects.models.value import Value
 from rdmo.projects.models.project import Project
-from rdmo.questions.models import Catalog, Page, QuestionSet
+from rdmo.questions.models import Catalog
 from rdmo.core.imports import handle_fetched_file
 from rdmo.projects.imports import RDMOXMLImport
 from rdmo.projects.mixins import ProjectImportMixin
@@ -24,6 +24,7 @@ from rdmo.core.plugins import get_plugin
 from ..mixins import GitHubProviderMixin
 from ..forms.custom_validators import FilePathExtensionValidator
 from ..forms.forms import GitHubImportForm
+from ..utils import groupby_values, get_optionset_options, get_questionsets, get_pages
 
 logger = logging.getLogger(__name__)
 
@@ -291,28 +292,13 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         
         return selected_urls, new_choice_warnings
     
-    def groupby_values(self, initial, v, groupby):
-        groupby_mapping = {
-            'attribute': v.attribute.uri,
-            'option': v.option.uri if v.option else None,
-            'text': v.text.lower(),
-            'set_index': v.set_index,
-            'set_prefix': v.set_prefix
-        }
-        _groupby = str(groupby_mapping[groupby])
-        if _groupby not in initial.keys():
-            initial[_groupby] = [v]
-        else:
-            initial[_groupby].append(v)
-        return initial
-
     def merge_licenses(self, new_license_values, import_values):
         existing_license_option_uris = [
             v.option.uri for v in import_values 
             if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/smp/software-license'
         ]
         
-        grouped_new_license_values = reduce(partial(self.groupby_values, groupby='option'), new_license_values, {}) 
+        grouped_new_license_values = reduce(partial(groupby_values, groupby='option'), new_license_values, {}) 
         unique_new_license_values = [value_list[0] for value_list in grouped_new_license_values.values()]
         for v in unique_new_license_values:
             license_option_uri =v.option.uri
@@ -323,18 +309,10 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 import_values.append(v)
 
         return import_values
-
-    def get_optionset_options(self, optionset_uri):
-        try:
-            options = OptionSet.objects.get(uri=optionset_uri).elements
-            return options
-        except KeyError:
-            logger.info('GitHubImportProvider - Optionset %s not in db. Skipping.', optionset_uri)
-            return []
-    
+  
     def get_repo_license(self, url, import_values, headers, response=None, license_id=None):
         # 1. Get license option
-        license_options = self.get_optionset_options('https://rdmorganiser.github.io/terms/options/software-license')
+        license_options = get_optionset_options('https://rdmorganiser.github.io/terms/options/software-license')
 
         license_dict = response.json().get('license') if response else {}
         if isinstance(license_dict, dict):
@@ -367,29 +345,73 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 
         return import_values
     
-    def get_identifier_option(self, identifier_type):
-        options = self.get_optionset_options('https://rdmorganiser.github.io/terms/options/software_identifier')
-
-        collection_index, option = next(
-            ((i, o) for i, o in enumerate(options) if o.uri.endswith(identifier_type)), 
-            (None, None)
-        )
-        
-        return collection_index, option
-
     def merge_languages(self, new_language_values, import_values):
-        existing_languages = [
-            v.text.lower() for v in import_values 
+        import_values_languages = [
+            (v.collection_index, v.text) for v in import_values 
             if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/smp/language'
         ]
-        
-        grouped_new_language_values = reduce(partial(self.groupby_values, groupby='text'), new_language_values, {}) 
+
+        project_languages = []
+        if self.current_project:
+            project_languages = [
+                (v.collection_index, v.text)
+                for v in self.current_project.values.filter(attribute__uri='https://rdmorganiser.github.io/terms/domain/smp/language') \
+                .order_by('collection_index')
+            ]
+
+        grouped_new_language_values = reduce(partial(groupby_values, groupby='text'), new_language_values, {}) 
         unique_new_language_values = [value_list[0] for value_list in grouped_new_language_values.values()]
+                
+        matching_languages = {} # imported languages that already exist in current_project
+        for import_index, language_value in enumerate(unique_new_language_values):
+            language = language_value.text
+            matching_project_language_index, matching_project_language = next(
+                ((i, l) for (i, l) in project_languages if l.lower() == language.lower()),
+                (None, None)
+            )
+
+            if matching_project_language:
+                language_value.collection_index = matching_project_language_index
+                matching_languages[import_index] = language_value
+
+        new_values = []
+        index_to_update = []
         for i, v in enumerate(unique_new_language_values):
             language = v.text.lower()
-            if (len(existing_languages) == 0 or language not in existing_languages):
-                v.collection_index = i + len(existing_languages)
-                import_values.append(v)
+            if i in matching_languages.keys():
+                new_values.append(matching_languages.get(i))
+                continue
+
+            index = i + len(import_values_languages)
+            if index in [j for (j, l) in project_languages]:
+                index_to_update.append(v)
+                continue
+            
+            if (len(import_values_languages) == 0 or language not in [l.lower() for (j, l) in import_values_languages]):
+                v.collection_index = index
+                new_values.append(v)
+
+        if len(index_to_update) > 0:
+            usable_matching_language_indizes = [i for i in matching_languages.keys() if i not in [j for (j, o) in project_languages]]
+            new_values_language_indizes = [v.collection_index for v in new_values]
+            
+            # starting_index accounts for project languages, import_values languages and new_values languages
+            max_project_language_index = max([j for (j, l) in project_languages]) if len(project_languages) > 0 else 0
+            max_import_values_language_index = max([j for (j, l) in import_values_languages]) if len(import_values_languages) > 0 else 0
+            max_new_values_language_index = max(new_values_language_indizes) if len(new_values_language_indizes) > 0 else 0
+            starting_index = 1 + max(max_project_language_index, max_import_values_language_index, max_new_values_language_index)
+            
+            available_indizes = [
+                *usable_matching_language_indizes, 
+                *[j for j in range(starting_index, (starting_index + len(index_to_update)))]
+            ]
+            
+            for i, v in enumerate(index_to_update):
+                index = available_indizes[i]
+                v.collection_index = index
+                new_values.append(v)
+
+        import_values.extend(new_values)
 
         return import_values
     
@@ -423,7 +445,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         ]
 
         # Only one value for dependencies, so if there are multiple, merge all their texts and append only one to import_values
-        grouped_new_dependencies_values = reduce(partial(self.groupby_values, groupby='text'), new_dependencies_values, {}) 
+        grouped_new_dependencies_values = reduce(partial(groupby_values, groupby='text'), new_dependencies_values, {}) 
         unique_new_dependencies_texts = [value_list[0].text for value_list in grouped_new_dependencies_values.values()]
         new_dependencies_text = '\n'.join(unique_new_dependencies_texts)
         
@@ -456,7 +478,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         ]
 
         # Only one value for dependency licenses, so if there are multiple, merge all their texts and append only one to import_values
-        grouped_new_dependency_licenses_values = reduce(partial(self.groupby_values, groupby='text'), new_dependency_licenses_values, {}) 
+        grouped_new_dependency_licenses_values = reduce(partial(groupby_values, groupby='text'), new_dependency_licenses_values, {}) 
         unique_new_dependency_licenses_texts = [value_list[0].text for value_list in grouped_new_dependency_licenses_values.values()]
         new_dependency_licenses_text = '\n'.join(unique_new_dependency_licenses_texts)
         
@@ -566,15 +588,34 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values
     
+    def get_values(self, path, set_prefix='', set_index=0):
+        return self.project.values.filter(snapshot=self.snapshot, attribute__path=path,
+                                          set_prefix=set_prefix, set_index=set_index) \
+                                  .order_by('collection_index')
+    
     def merge_authors(self, new_author_values, import_values):
-        existing_set_id_values = [
-            v for v in import_values 
+        import_values_author_indizes = [
+            v.set_index for v in import_values 
             if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/project/partner/id'
         ]
-        existing_authors_orcids = [
+        import_values_orcids = [
             v.text for v in import_values 
             if v.attribute.uri == 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid'
         ]
+        
+        project_author_indizes = []
+        project_orcids = []
+        if self.current_project:
+            project_author_indizes = [
+                v.set_index 
+                for v in self.current_project.values.filter(attribute__uri='https://rdmorganiser.github.io/terms/domain/project/partner/id') \
+                .order_by('set_index')
+            ]
+            project_orcids = [
+                (v.set_index, v.text)
+                for v in self.current_project.values.filter(attribute__uri='https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid') \
+                .order_by('set_index')
+            ]
         
         employment_attributes = [
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/role',
@@ -584,36 +625,102 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         ]
 
         grouped_new_author_values = reduce(
-            partial(self.groupby_values, groupby='set_index'), 
+            partial(groupby_values, groupby='set_index'), 
             [v for v in new_author_values if v.attribute.uri not in employment_attributes], 
             {}
         )
         grouped_new_author_values = reduce(
-            partial(self.groupby_values, groupby='set_prefix'), 
+            partial(groupby_values, groupby='set_prefix'), 
             [v for v in new_author_values if v.attribute.uri in employment_attributes], 
             grouped_new_author_values
         )
         
-        new_values = []
-        for i, author_values_list in enumerate(grouped_new_author_values.values()):
+        matching_authors = {} # imported authors that already exist in current_project
+        for import_index, author_values_list in grouped_new_author_values.items():
             author_orcid = next(
                 (v.text for v in author_values_list 
                  if v.attribute.uri == 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid'), 
                 None
-            )            
-            if author_orcid in existing_authors_orcids:
+            )       
+            matching_project_author_index, matching_project_orcid = next(
+                ((i, o) for (i, o) in project_orcids if author_orcid is not None and o == author_orcid),
+                (None, None)
+            )
+
+            if matching_project_orcid:
+                for v in author_values_list:
+                    attr_uri = v.attribute.uri
+                    
+                    if attr_uri not in employment_attributes:
+                        v.set_index = matching_project_author_index
+
+                    if attr_uri in employment_attributes:
+                        v.set_prefix = str(matching_project_author_index) # set_prefix is a string field
+
+                matching_authors[int(import_index)] = author_values_list
+
+        new_values = []
+        index_to_update = []
+        for i, (import_index, author_values_list) in enumerate(grouped_new_author_values.items()):
+            author_orcid = next(
+                (v.text for v in author_values_list 
+                 if v.attribute.uri == 'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/orcid'), 
+                None
+            )
+            if author_orcid in import_values_orcids:
+                continue
+
+            if int(import_index) in matching_authors.keys():
+                new_values.extend(matching_authors.get(int(import_index)))
+                continue
+
+            index = i + len(import_values_author_indizes)
+            if index in project_author_indizes:
+                index_to_update.append(author_values_list)
                 continue
 
             for v in author_values_list:
                 attr_uri = v.attribute.uri
-                
+
                 if attr_uri not in employment_attributes:
-                    v.set_index = i + len(existing_set_id_values)
+                    v.set_index = index
 
                 if attr_uri in employment_attributes:
-                    v.set_prefix = str(i + len(existing_set_id_values)) # set_prefix is a string field
+                    v.set_prefix = str(index) # set_prefix is a string field
 
                 new_values.append(v)
+
+        if len(index_to_update) > 0:
+            remaining_matching_author_indizes = [i for i in matching_authors.keys() if i not in project_author_indizes]
+            new_values_author_indizes = [
+                v.set_index for v in new_values
+                if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/project/partner/id'
+            ]
+
+            # starting_index accounts for project authors, import_values authors and new_values authors
+            max_project_author_index = max(project_author_indizes) if len(project_author_indizes) > 0 else 0
+            max_import_values_author_index = max(import_values_author_indizes) if len(import_values_author_indizes) > 0 else 0
+            max_new_values_author_index = max(new_values_author_indizes) if len(new_values_author_indizes) > 0 else 0
+            starting_index = 1 + max(max_project_author_index, max_import_values_author_index, max_new_values_author_index)
+            
+            available_indizes = [
+                *remaining_matching_author_indizes, 
+                *[j for j in range(starting_index, (starting_index + len(index_to_update)))]
+            ]
+
+            for i, author_values_list in enumerate(index_to_update):
+                index = available_indizes[i]
+                for v in author_values_list:
+                    attr_uri = v.attribute.uri
+
+                    if attr_uri not in employment_attributes:
+                        v.set_index = index
+
+                    if attr_uri in employment_attributes:
+                        v.set_prefix = str(index) # set_prefix is a string value
+
+                    new_values.append(v)
+        
 
         def sort_by_external_id(e):
             # values without an external id come first
@@ -632,7 +739,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             if v.attribute.uri == 'https://rdmorganiser.github.io/terms/domain/smp/software-pid'
         ]
         
-        grouped_new_identifier_values = reduce(partial(self.groupby_values, groupby='option'), new_identifier_values, {}) 
+        grouped_new_identifier_values = reduce(partial(groupby_values, groupby='option'), new_identifier_values, {}) 
         unique_new_identifier_values = [value_list[0] for value_list in grouped_new_identifier_values.values()]
         
         new_values = []
@@ -792,6 +899,16 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values, found_new_authors
     
+    def get_identifier_option(self, identifier_type):
+        options = get_optionset_options('https://rdmorganiser.github.io/terms/options/software_identifier')
+
+        collection_index, option = next(
+            ((i, o) for i, o in enumerate(options) if o.uri.endswith(identifier_type)), 
+            (None, None)
+        )
+        
+        return collection_index, option
+    
     def get_cff_identifiers(self, cff_data, import_values):
         _identifiers = []
         _identifier_types = []
@@ -906,9 +1023,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         new_values = [v for v in xml_import_plugin.values if v.attribute]
         xml_import_plugin.values = new_values
         
-        if len(import_values) == 0:
-            return xml_import_plugin.values
-        
         author_attribute_uris = [
             'https://rdmorganiser.github.io/terms/domain/project/partner/id',
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/type',
@@ -924,21 +1038,27 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
             'https://rdmo.mpdl.mpg.de/terms/domain/project/partner/affiliation/ror-id'
         ]
         grouped_import_values = reduce(
-            partial(self.groupby_values, groupby='attribute'), 
+            partial(groupby_values, groupby='attribute'), 
             [v for v in import_values if v.attribute.uri not in author_attribute_uris], 
             {}
         )
         grouped_import_values['authors'] = [v for v in import_values if v.attribute.uri in author_attribute_uris]
         
         grouped_xml_values = reduce(
-            partial(self.groupby_values, groupby='attribute'), 
+            partial(groupby_values, groupby='attribute'), 
             [v for v in xml_import_plugin.values if v.attribute.uri not in author_attribute_uris], 
             {}
         )
         grouped_xml_values['authors'] = [v for v in xml_import_plugin.values if v.attribute.uri in author_attribute_uris]
 
         for uri, xml_values_list in grouped_xml_values.items():
-            if uri not in grouped_import_values.keys():
+            if (
+                uri not in grouped_import_values.keys() and
+                # imported xml authors and languages must always be merged: 
+                # they may have different order than matching project values
+                uri != 'authors' and 
+                uri != 'https://rdmorganiser.github.io/terms/domain/smp/language'
+            ):
                 import_values.extend(xml_values_list)
             else:
                 import_values = self.merge_xml_values(uri, xml_values_list, import_values)
@@ -988,8 +1108,8 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         # Keep only values with a corresponding question, question set or page (attribute) 
         # in import_project.catalog (which equals current_project.catalog)
         catalog_questions = self.get_questions(import_project.catalog)
-        catalog_questionsets = self.get_questionsets(import_project.catalog)
-        catalog_pages = self.get_pages(import_project.catalog)
+        catalog_questionsets = get_questionsets(import_project.catalog)
+        catalog_pages = get_pages(import_project.catalog)
         import_values = [
             v for v in import_values if (
                 catalog_questions.get(v.attribute.uri) or
@@ -997,6 +1117,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 catalog_pages.get(v.attribute.uri)
             )
         ]
+
         return import_values
 
     def get_import_project(self, headers, repo_response, request_urls):
@@ -1050,28 +1171,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 pass
 
         return import_project, xml_import_plugin
-    
-    def get_questionsets(self, catalog):
-        queryset = QuestionSet.objects.filter_by_catalog(catalog) \
-                                .select_related('attribute') \
-                                .order_by('attribute__uri')
-
-        questionsets = {}
-        for questionset in queryset:
-            if questionset.attribute and questionset.attribute.uri not in questionsets:
-                questionsets[questionset.attribute.uri] = questionset
-        return questionsets
-    
-    def get_pages(self, catalog):
-        queryset = Page.objects.filter_by_catalog(catalog) \
-                                .select_related('attribute') \
-                                .order_by('attribute__uri')
-
-        pages = {}
-        for page in queryset:
-            if page.attribute and page.attribute.uri not in pages:
-                pages[page.attribute.uri] = page
-        return pages
     
     def create_import_xml_file(self, request, import_project, import_values, xml_import_plugin, request_urls):
         # 1. If Value() for title (title_value) exists and title_value != import_project.title, 
