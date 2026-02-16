@@ -798,8 +798,15 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return import_values
     
     def get_cff_license(self, cff_data, import_values, url, headers):
-        for _id in cff_data.get('license', []):
-            import_values = self.get_repo_license(url, import_values, headers, license_id=_id)
+        cff_license = cff_data.get('license')
+
+        if cff_license is None:
+            return import_values
+        elif isinstance(cff_license, list):
+            for _id in cff_license:
+                import_values = self.get_repo_license(url, import_values, headers, license_id=_id)
+        else:
+            import_values = self.get_repo_license(url, import_values, headers, license_id=cff_license)
 
         return import_values
     
@@ -897,7 +904,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         options = get_optionset_options('https://rdmorganiser.github.io/terms/options/software_identifier')
 
         collection_index, option = next(
-            ((i, o) for i, o in enumerate(options) if o.uri.endswith(identifier_type)), 
+            ((i, o) for i, o in enumerate(options) if identifier_type and o.uri.endswith(identifier_type)), 
             (None, None)
         )
         
