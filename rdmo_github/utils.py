@@ -86,9 +86,15 @@ def set_record_id_on_project_value(project, record_id, export_format):
         project_sha_value.text = record_id
         project_sha_value.save()
 
-def clear_record_id_from_project_value(project, export_format):
-    '''Delete the record_id from the project's values if it exists'''
+def clear_project_value_with_record_id(project, export_format):
+    '''Delete project value with record_id if it exists'''
     
     project_sha_value, record_id_attribute = get_project_value_with_record_id(project, export_format)
     if project_sha_value is not None:
         project_sha_value.delete()
+
+def clear_all_project_values_with_record_ids(project):
+    ''' Delete all project values with record_id '''
+    
+    sha_attributes = Attribute.objects.filter(uri__startswith=f'{attribute_uri_prefix}/domain/{attribute_sha_uri_key_prefix}')
+    project.values.filter(attribute__in=sha_attributes).delete()

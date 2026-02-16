@@ -19,7 +19,7 @@ from rdmo_maus.exports.smp_exports import SMPExportMixin
 from ..mixins import GitHubProviderMixin
 from ..forms.forms import GitHubExportForm
 from ..forms.custom_validators import validate_file_path, FilePathExtensionValidator
-from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_record_id_from_project_value
+from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_project_value_with_record_id, clear_all_project_values_with_record_ids
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +141,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             if self.project is None:
                 return redirect('projects')
             else:
+                clear_all_project_values_with_record_ids(self.project)
                 return redirect('project', self.project.id)
 
         if form.is_valid():
@@ -203,7 +204,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         elif response.status_code == 404:
             logger.error(f'GitHubExportProvider - No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
             # the export_choice does not exist in GitHub, delete the corresponding sha from the project.value.text
-            clear_record_id_from_project_value(project, export_choice)
+            clear_project_value_with_record_id(project, export_choice)
         else:
             # Log any other unexpected response code
             logger.error(f'GitHubExportProvider - Error validating sha for export choice "{export_choice}": {response.status_code}')
@@ -322,7 +323,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             stored_sha = get_record_id_from_project_value(self.project, choice_key)
             if stored_sha is not None:
                 choice_request_data['sha'] = stored_sha
-            clear_record_id_from_project_value(self.project, choice_key)
+            clear_project_value_with_record_id(self.project, choice_key)
 
             content = self.render_export_content(choice_key) 
             if content is None:
