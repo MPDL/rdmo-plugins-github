@@ -11,7 +11,6 @@ from django.shortcuts import redirect, render
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.translation import gettext, gettext_lazy as _
 
-
 from rdmo.projects.models.value import Value
 from rdmo.projects.models.project import Project
 from rdmo.questions.models import Catalog
@@ -588,11 +587,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         return import_values
     
-    def get_values(self, path, set_prefix='', set_index=0):
-        return self.project.values.filter(snapshot=self.snapshot, attribute__path=path,
-                                          set_prefix=set_prefix, set_index=set_index) \
-                                  .order_by('collection_index')
-    
     def merge_authors(self, new_author_values, import_values):
         import_values_author_indizes = [
             v.set_index for v in import_values 
@@ -790,7 +784,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return import_values
         
     def get_cff_title(self, cff_data, import_values):
-        cff_value = cff_data.get('title', None)
+        cff_value = cff_data.get('title')
         v_attribute = self.get_attribute('https://rdmorganiser.github.io/terms/domain/project/title')
 
         if cff_value and v_attribute:
@@ -804,7 +798,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         return import_values
     
     def get_cff_license(self, cff_data, import_values, url, headers):
-        for _id in cff_data.get('license'):
+        for _id in cff_data.get('license', []):
             import_values = self.get_repo_license(url, import_values, headers, license_id=_id)
 
         return import_values
@@ -913,7 +907,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
         _identifiers = []
         _identifier_types = []
         if 'identifiers' in cff_data:
-            _identifiers.extend(cff_data.get('identifiers'))
+            _identifiers.extend(cff_data.get('identifiers', []))
             _identifier_types.extend([i.get('type') for i in cff_data.get('identifiers', [])])
         if 'doi' in cff_data and 'doi' not in _identifier_types:
             _identifiers.append({'type': 'doi', 'value': cff_data.get('doi')})
@@ -922,7 +916,7 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
 
         identifier_values = []
         for identifier in _identifiers:
-            value = identifier.get('value', None)
+            value = identifier.get('value')
             if value is None:
                 continue
 
