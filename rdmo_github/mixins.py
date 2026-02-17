@@ -214,6 +214,9 @@ class GitHubProviderMixin(OauthProviderMixin):
         self.store_in_session(request, 'request', (method, url, kwargs))
         return self.authorize(request)
     
+    def put_success(self, request, response):
+        raise NotImplementedError
+    
     def authorize(self, request):
         installation_id = self.get_from_session(request, 'installation_id')
         if APP_TYPE == 'github_app' and installation_id is None:
