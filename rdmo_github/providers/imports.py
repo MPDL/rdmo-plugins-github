@@ -716,12 +716,6 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                     new_values.append(v)
         
 
-        def sort_by_external_id(e):
-            # values without an external id come first
-            # external id marks values used by option providers
-            return e.external_id
-
-        new_values.sort(key = sort_by_external_id)
         import_values.extend(new_values)
         merged_new_authors = True if len(new_values) > 0 else False
         
@@ -1118,6 +1112,13 @@ class GitHubImportProvider(GitHubProviderMixin, ProjectImportMixin, RDMOXMLImpor
                 catalog_pages.get(v.attribute.uri)
             )
         ]
+
+        def sort_by_external_id(e):
+            # values without an external id come first
+            # external id marks values used by option providers
+            return e.external_id
+
+        import_values.sort(key = sort_by_external_id)
 
         return import_values
 
