@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from rdmo_maus.forms.custom_fields import MultivalueCheckboxMultipleChoiceField
+
 from .custom_validators import validate_new_repo_name
 
 class GithubBaseForm(forms.Form):
@@ -47,7 +48,7 @@ class GitHubExportForm(GithubBaseForm):
         required=False,
         widget=forms.CheckboxInput(
             attrs={
-                'onclick': f'''toggleRepoFields("id_new_repo", "form-group field-new_repo_name", "form-group field-repo", "{_('Export to GitHub')}", "{_('Proceed')}")'''
+                'onclick': f'''toggleRepoFields("id_new_repo", "form-group field-new_repo_name", "form-group field-repo")'''
         })
     )
 
