@@ -298,6 +298,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         # EXPORT OPTIONS
         checked_export_choices = self.pop_from_session(self.request, 'github_checked_export_choices')
         checked_branch = self.pop_from_session(self.request, 'github_checked_branch')
+        branch = 'main' if new_repo else form_data['branch']
+        
         exports = form_data['exports']
         processed_exports = []
         for e in exports:
@@ -307,7 +309,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 file_path
             )
             initial_branch = 'main' if new_repo else checked_branch
-            branch = 'main' if new_repo else form_data['branch']
+            
             if file_path != initial_file_path or branch != initial_branch:
                 new_export_choice_warnings, __, ___, ____ = self.check_file_paths([e], form_data['repo'], branch)
                 if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
