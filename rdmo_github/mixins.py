@@ -329,7 +329,7 @@ class GitHubProviderMixin(OauthProviderMixin):
         # store new access token in session
         access_token = response_data.get('access_token')
         self.store_in_session(request, 'access_token', access_token)
-        self.store_in_session(request, 'refresh_token', response_data.get('refresh_token', None))
+        self.store_in_session(request, 'refresh_token', response_data.get('refresh_token'))
 
         return access_token
     
