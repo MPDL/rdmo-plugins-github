@@ -19,9 +19,9 @@ from rdmo.projects.imports import RDMOXMLImport
 from rdmo.projects.mixins import ProjectImportMixin
 from rdmo.projects.utils import save_import_snapshot_values, save_import_tasks, save_import_values, save_import_views
 from rdmo.core.plugins import get_plugin
+from rdmo_maus.forms.custom_validators import FilePathExtensionValidator
 
 from ..mixins import GitHubProviderMixin
-from ..forms.custom_validators import FilePathExtensionValidator
 from ..forms.forms import GitHubImportForm
 from ..utils import groupby_values, get_optionset_options, get_questionsets, get_pages
 

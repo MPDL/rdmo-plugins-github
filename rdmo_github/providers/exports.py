@@ -15,10 +15,10 @@ from rdmo.projects.providers import OauthIssueProvider
 from rdmo.projects.exports import Export
 
 from rdmo_maus.exports.smp_exports import SMPExportMixin
+from rdmo_maus.forms.custom_validators import validate_file_path, FilePathExtensionValidator
 
 from ..mixins import GitHubProviderMixin
 from ..forms.forms import GitHubExportForm
-from ..forms.custom_validators import validate_file_path, FilePathExtensionValidator
 from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_project_value_with_record_id, clear_all_project_values_with_record_ids
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         valid_extensions = {
             'xml': '.xml',
             'csvcomma': '.csv', 
-            'csvsemicolon': 'csv', 
+            'csvsemicolon': '.csv',
             'json': '.json',
         }
         choice_keys = ['xml', 'csvcomma', 'csvsemicolon', 'json']
@@ -149,6 +149,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             export_choice_warnings = self.get_from_session(self.request, 'github_export_choice_warnings')
             new_repo = form.cleaned_data['new_repo']
+            
             if not new_repo and export_choice_warnings is None:
                 context, export_choice_warnings = self.validate_export_choices(form.cleaned_data)
 
