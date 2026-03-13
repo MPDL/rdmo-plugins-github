@@ -20,7 +20,6 @@ class GithubBaseForm(forms.Form):
         if repo_help_text is not None:
             self.fields['repo'].help_text = repo_help_text
 
-
 class GitHubExportForm(GithubBaseForm):
     def __init__(self, *args, **kwargs):
         export_choices = kwargs.pop('export_choices', None)
@@ -92,6 +91,9 @@ class GitHubExportForm(GithubBaseForm):
         if new_repo and new_repo_name == '':
             self.add_error('new_repo_name', ValidationError(_('A name for the new repository is required.'), code='required'))
         
+        if not new_repo and 'new_repo_name' in self.errors: # ignore new_repo_errors because repo will be used instead
+            self._errors.pop('new_repo_name')
+
         if not new_repo and repo == '':
             self.add_error('repo', ValidationError(_('A GitHub repository is required.'), code='required'))
 
