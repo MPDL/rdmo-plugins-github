@@ -4,9 +4,9 @@ from django.utils.html import format_html
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from rdmo_maus.forms.custom_fields import MultivalueCheckboxMultipleChoiceField
+from rdmo_maus.forms.fields import MultivalueCheckboxMultipleChoiceField
 
-from .custom_validators import validate_new_repo_name
+from .validators import validate_new_repo_name, validate_import_file_path
 
 class GithubBaseForm(forms.Form):
     def __init__(self, *args, **kwargs):
@@ -22,25 +22,21 @@ class GithubBaseForm(forms.Form):
 
 class GitHubExportForm(GithubBaseForm):
     def __init__(self, *args, **kwargs):
+        repo_choices = kwargs.get('repo_choices')
         export_choices = kwargs.pop('export_choices', None)
-        export_choice_validators = kwargs.pop('export_choice_validators', None)
-        export_choice_attributes = kwargs.pop('export_choice_attributes', None)
-        export_choice_warnings = kwargs.pop('export_choice_warnings', None)
         super().__init__(*args, **kwargs)
 
+        if repo_choices is not None and len(repo_choices) == 0:
+            self.fields['new_repo'].initial = True
+
         if export_choices is not None:
-            self.fields['exports'].choices = export_choices
-            self.fields['branch'].widget = forms.TextInput(attrs={'oninput': f'hideAllChoiceWarningMessages(this, {len(export_choices)})'})
-
-        if export_choice_validators is not None:
-            self.fields['exports'].choice_validators = export_choice_validators
-
-        if export_choice_attributes is not None:
-            self.fields['exports'].widget.choice_attributes = export_choice_attributes
-
-        if export_choice_warnings is not None:
-            self.fields['exports'].widget.choice_warnings = export_choice_warnings
-            self.fields['exports'].help_text = _('Warning: Existing content in GitHub will be overwritten. To avoid this, consider updating the file path or the branch.')
+            self.fields['exports'].choices = export_choices.get('choices')
+            self.fields['branch'].widget = forms.TextInput(
+                attrs={'oninput': f"hideAllChoiceWarningMessages(this, {len(export_choices.get('choices'))})"}
+            )
+            self.fields['exports'].choice_validators = export_choices.get('choice_validators', {})
+            self.fields['exports'].widget.choice_attributes = export_choices.get('choice_attributes', {})
+            self.fields['exports'].widget.choice_warnings = export_choices.get('choice_warnings', {})
 
     new_repo = forms.BooleanField(
         label=_('Create new repository'),
@@ -53,7 +49,9 @@ class GitHubExportForm(GithubBaseForm):
 
     new_repo_name = forms.CharField(
         label=_('Name for the new repository'),
-        help_text=_('Unique name for the new repository. No other of your repositories may have the same name, otherwise the export will fail.'),
+        help_text=_(
+            'Unique name for the new repository. No other of your repositories may have the same name, otherwise the export will fail.'
+        ),
         required=False,
         widget=forms.TextInput(attrs={'placeholder': _('example-repo-name')}),
         validators=[validate_new_repo_name]
@@ -80,7 +78,10 @@ class GitHubExportForm(GithubBaseForm):
     commit_message = forms.CharField(label=_('Commit message'))
 
     class Media:
-        js = [format_html('<script src="{}" defer ></script>', static('plugins/js/github_form.js'))]
+        js = [format_html(
+            '<script src="{}" repoToggleId="id_new_repo" checkedCollectionClass="form-group field-new_repo_name" uncheckedCollectionClass="form-group field-repo" ></script>',
+            static('plugins/js/github_form.js')
+        )]
 
     def clean(self):
         super().clean()
@@ -97,32 +98,34 @@ class GitHubExportForm(GithubBaseForm):
         if not new_repo and repo == '':
             self.add_error('repo', ValidationError(_('A GitHub repository is required.'), code='required'))
 
-
 class GitHubImportForm(GithubBaseForm):
     def __init__(self, *args, **kwargs):
+        repo_choices = kwargs.get('repo_choices')
         import_choices = kwargs.pop('import_choices', None)
-        import_choice_warnings = kwargs.pop('import_choice_warnings', None)
-        import_choice_validators = kwargs.pop('import_choice_validators', None)
-        import_choice_attributes = kwargs.pop('import_choice_attributes', None)
         super().__init__(*args, **kwargs)
 
+        if repo_choices is not None and len(repo_choices) == 0:
+            self.fields['other_repo_check'].initial = True
+
         if import_choices is not None:
-            self.fields['imports'].choices = import_choices
+            self.fields['imports'].choices = import_choices.get('choices')
+            self.fields['imports'].choice_validators = import_choices.get('choice_validators', {})
+            self.fields['imports'].widget.choice_attributes = import_choices.get('choice_attributes', {})
+            self.fields['imports'].widget.choice_warnings = import_choices.get('choice_warnings', {})
+        else:
+            self.fields['imports'] = forms.CharField(
+                label=_('File path'),
+                help_text=_("The import file's relative path in the repository. The file must be in XML format."),
+                widget=forms.TextInput(attrs={'placeholder': _('example_folder/example_xml_file.xml')}),
+                validators=[validate_import_file_path]
+            )
 
-        if import_choice_validators is not None:
-            self.fields['imports'].choice_validators = import_choice_validators
-
-        if import_choice_attributes is not None:
-            self.fields['imports'].widget.choice_attributes = import_choice_attributes
-
-        if import_choice_warnings is not None:
-            self.fields['imports'].widget.choice_warnings = import_choice_warnings
-
-
-    other_repo_check = forms.BooleanField (
+    other_repo_check = forms.BooleanField(
         label=_('Use other repository'),
         required=False,
-        widget=forms.CheckboxInput(attrs={'onclick': 'toggleRepoFields("id_other_repo_check", "form-group field-other_repo", "form-group field-repo")'})
+        widget=forms.CheckboxInput(
+            attrs={'onclick': 'toggleRepoFields("id_other_repo_check", "form-group field-other_repo", "form-group field-repo")'}
+        )
     )
 
     repo = forms.ChoiceField(
@@ -133,7 +136,9 @@ class GitHubImportForm(GithubBaseForm):
 
     other_repo = forms.CharField(
         label=_('GitHub repository'),
-        help_text=_("URL of GitHub repository you want to import from. If this repository is not public, you must have access to it."),
+        help_text=_(
+            'URL of GitHub repository you want to import from. If this repository is not public, you must have access to it.'
+        ),
         widget=forms.TextInput(attrs={'placeholder': _('https://github.com/example-owner/example-repo')}),
         required=False
     )
@@ -150,7 +155,10 @@ class GitHubImportForm(GithubBaseForm):
     )
 
     class Media:
-        js = [format_html('<script src="{}" defer ></script>', static('plugins/js/github_form.js'))]
+        js = [format_html(
+            '<script src="{}" repoToggleId="id_other_repo_check" checkedCollectionClass="form-group field-other_repo" uncheckedCollectionClass="form-group field-repo" ></script>',
+            static('plugins/js/github_form.js')
+        )]
 
     def clean(self):
         super().clean()
