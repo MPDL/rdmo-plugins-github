@@ -1,6 +1,6 @@
 import logging
 import requests
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, urlparse, parse_qs
 from requests.auth import HTTPBasicAuth
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
@@ -125,7 +125,9 @@ class GitHubProviderMixin(OauthProviderMixin):
         )
 
         if path:
-            url += '/contents/{path}'.format(path=path.strip('../'))
+            url += '/contents/{path}'.format(
+                path=quote(path.strip('../'), safe='')
+            )
 
         if suffix:
             url += suffix
@@ -333,19 +335,28 @@ class GitHubProviderMixin(OauthProviderMixin):
 
         return access_token
     
-    def get_repo_choices(self, access_token, installation_id, minimum_repo_permission):
-        if access_token is None: return []
+    def get_repo_choices(self, request, access_token, installation_id, minimum_repo_permission, page, per_page=10):
+        if access_token is None: return [], False
+
+        stored_repo_choices = self.get_from_session(request, 'github_repo_choices')
+        more_repos_available = self.get_from_session(request, 'github_more_repos_available')
+        
+        if stored_repo_choices and more_repos_available == False:
+            return stored_repo_choices, more_repos_available
 
         if APP_TYPE == 'github_app':
+            # https://docs.github.com/de/rest/apps/installations?apiVersion=2022-11-28#list-repositories-accessible-to-the-user-access-token
             url = '{api_url}/user/installations/{installation_id}/repositories?per_page={per_page}'.format(
                     api_url=self.api_url,
                     installation_id=installation_id,
-                    per_page=10
+                    per_page=per_page
                 )
         else:
-            url = '{api_url}/user/repos?per_page={per_page}&sort={sort}'.format(
+            # https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#list-repositories-for-the-authenticated-user
+            url = '{api_url}/user/repos?per_page={per_page}&page={page}&sort={sort}'.format(
                     api_url=self.api_url,
-                    per_page=10,
+                    per_page=per_page,
+                    page=page,
                     sort='updated'
                 )
         
@@ -354,20 +365,56 @@ class GitHubProviderMixin(OauthProviderMixin):
             response.raise_for_status()
         except requests.HTTPError as e:
             logger.error('Error requesting GitHub repo list: %s (%s)', response.content, response.status_code)
-            raise e
+            return [], False
 
         if APP_TYPE == 'github_app':
-            repos = [r.get('html_url') for r in response.json().get('repositories', []) if r.get('permissions', {}).get(minimum_repo_permission) == True]
+            repos = [
+                r.get('html_url') for r in response.json().get('repositories', []) 
+                if r.get('permissions', {}).get(minimum_repo_permission) == True
+            ]
+            total_repo_count = response.json().get('total_count')
         else:
-            repos = [r.get('html_url') for r in response.json() if r.get('permissions', {}).get(minimum_repo_permission) == True]
-
+            repos = [
+                r.get('html_url') for r in response.json() 
+                if r.get('permissions', {}).get(minimum_repo_permission) == True
+            ]
+            header_last_link = next(
+                (l.strip('<>; rel="last"') for l in response.headers.get('Link', '').split(', ') if l.endswith('; rel="last"')),
+                None
+            )
+            parsed = urlparse(header_last_link)
+            query_params = parse_qs(parsed.query)
+            last_page = int(query_params.get('page')[0]) if query_params.get('page') else 0
+            total_repo_count = last_page*per_page # max total_repo_count
+        
         repo_choices = [(r, r) for r in repos]
-        return repo_choices
+
+        if stored_repo_choices:
+            repo_choices = stored_repo_choices + repo_choices
+
+        # total_repo_count = int(response.headers.get('X-Total')) if response.headers.get('X-Total') else 0
+        more_repos_available = total_repo_count > page*per_page
+        
+        if APP_TYPE == 'oauth_app':
+            self.store_in_session(request, 'github_more_repos_available', more_repos_available)
+            self.store_in_session(request, 'github_repo_choices', repo_choices)
+            self.store_in_session(request, 'github_repos_page', page)
+
+        return repo_choices, more_repos_available
     
     def get_repo_form_field_data(self, request, minimum_repo_permission):
         access_token = self.validate_access_token(request, self.get_from_session(request, 'access_token'))
         installation_id = self.get_from_session(request, 'installation_id')
-        repo_choices = self.get_repo_choices(access_token, installation_id, minimum_repo_permission)
+        
+        repos_page = self.pop_from_session(request, 'github_repos_page')
+        next_repos_page = repos_page + 1 if repos_page else 1
+        repo_choices, more_repos_available = self.get_repo_choices(
+            request, 
+            access_token, 
+            installation_id, 
+            minimum_repo_permission, 
+            next_repos_page
+        )
         
         app_actions = {
             'authorize': {
@@ -396,9 +443,21 @@ class GitHubProviderMixin(OauthProviderMixin):
         action = 'install' if (APP_TYPE == 'github_app' and installation_id is None) else (
             'authorize' if access_token is None else (None if APP_TYPE == 'oauth_app' else 'update')
         )
-        if action is None:
-            repo_help_text = _('''These are your most recently updated, accessible GitHub repositories (up to 10 will be shown here). 
-                To add another repository to this list, please update the repository and reload this page.''')
+        
+        if len(repo_choices) == 0:
+            repo_help_text = _('You do not have any GitHub repositories yet')
+        
+        elif action is None:
+            more_repos_link_text = _('To add more repositories to this list, click')
+            link_label = _('here')
+            more_repos_link = (
+                f' {more_repos_link_text} <a href="{self.request.build_absolute_uri()}" >{link_label}</a>.'
+                if more_repos_available
+                else ''
+            )
+            help_text = _('These are your most recently updated, accessible GitHub repositories.')
+            repo_help_text = mark_safe(f'{help_text} {more_repos_link}')
+
         else:
             url_function, url_kwargs, link_label, link_help_text = app_actions[action].values()
             url = url_function(**url_kwargs)
