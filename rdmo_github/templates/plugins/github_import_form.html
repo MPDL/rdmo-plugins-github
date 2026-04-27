@@ -3,20 +3,8 @@
 
 {% block head %}
     {{ form.media }}
-    {% endblock %}
+{% endblock %}
 
 {% block page %}
-
     {{ block.super }}
-
-    <style>        
-        .form-group.field-other_repo {
-            display: {{ other_repo_display }};
-        }
-        
-        .form-group.field-repo {
-            display: {{ repo_display }};
-        }
-    </style>
-
 {% endblock %}

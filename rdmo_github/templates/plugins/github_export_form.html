@@ -7,18 +7,8 @@
 
 {% block page %}
 
-    <h1>{% blocktrans %}Export to GitHub{% endblocktrans %}</h1>
+    <h1>{% trans 'Export to GitHub' %}</h1>
 
     {% bootstrap_form submit=_('Export to GitHub') %}
-
-    <style>
-        .form-group.field-new_repo_name {
-            display: {{ new_repo_name_display }};
-        }
-
-        .form-group.field-repo {
-            display: {{ repo_display }};
-        }
-    </style>
 
 {% endblock %}
