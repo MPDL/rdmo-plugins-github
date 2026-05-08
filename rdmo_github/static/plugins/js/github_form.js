@@ -22,14 +22,14 @@ function toggleRepoFields(cbId, checkedClass, uncheckedClass) {
   }
 }
 
-function hideAllChoiceWarningMessages(text, choice_count) {
+function hideAllChoiceWarningMessages(text, choiceCount) {
   let duration = 1000
   clearTimeout(text._timer)
   text._timer = setTimeout(()=>{
-    for (let i=0; i<choice_count; i++) {
-      let choice_warning_messages = document.getElementById(`id_warnings_${i}`)
-      if (choice_warning_messages) {
-        choice_warning_messages.style.display = 'none'
+    for (let i=0; i<choiceCount; i++) {
+      let choiceWarningMessages = document.getElementById(`id_warnings_${i}`)
+      if (choiceWarningMessages) {
+        choiceWarningMessages.style.display = 'none'
       }
     }
   }, duration)
