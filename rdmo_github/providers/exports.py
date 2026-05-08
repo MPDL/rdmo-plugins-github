@@ -2,24 +2,31 @@ import base64
 import hmac
 import json
 import logging
-import requests
 
 from django import forms
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
-from django.utils.translation import gettext, gettext_lazy as _
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
 
-from rdmo.core.plugins import get_plugin
-from rdmo.projects.providers import OauthIssueProvider
-from rdmo.projects.exports import Export
+import requests
 
 from rdmo_maus.exports.smp_exports import SMPExportMixin
-from rdmo_maus.forms.validators import validate_file_path, FilePathExtensionValidator
+from rdmo_maus.forms.validators import FilePathExtensionValidator, validate_file_path
 
-from ..mixins import GitHubProviderMixin
+from rdmo.core.plugins import get_plugin
+from rdmo.projects.exports import Export
+from rdmo.projects.providers import OauthIssueProvider
+
 from ..forms.forms import GitHubExportForm
-from ..utils import set_record_id_on_project_value, get_record_id_from_project_value, clear_project_value_with_record_id, clear_all_project_values_with_record_ids
+from ..mixins import GitHubProviderMixin
+from ..utils import (
+    clear_all_project_values_with_record_ids,
+    clear_project_value_with_record_id,
+    get_record_id_from_project_value,
+    set_record_id_on_project_value,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +35,16 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
     def export_choices(self):
         catalog = self.project.catalog.uri_path
         catalog = catalog.lower() if isinstance(catalog, str) else 'project_export'
-            
+
         export_choices = { # check MultivalueCheckboxMultipleChoiceField in rdmo_maus.forms.fields.py for details
             'choices': [
                 (f'False,data/{catalog}.xml', ('RDMO XML', _('File path')), 'xml'),
                 (f'False,data/{catalog}_comma_separated.csv', (_('CSV (comma separated)'), _('File path')), 'csvcomma'),
-                (f'False,data/{catalog}_semicolon_separated.csv', (_('CSV (semicolon separated)'), _('File path')), 'csvsemicolon'),
+                (
+                    f'False,data/{catalog}_semicolon_separated.csv',
+                    (_('CSV (semicolon separated)'), _('File path')),
+                    'csvsemicolon'
+                ),
                 (f'False,data/{catalog}.json', ('JSON', _('File path')), 'json')
             ],
             'choice_validators': {
@@ -73,7 +84,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 }
             }
         }
-        
+
         smp_export_choices = getattr(self, 'smp_export_choices', None)
         if smp_export_choices:
             smp_export_choices.get('choices', []).extend(export_choices.get('choices', []))
@@ -82,26 +93,26 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             export_choices['choice_attributes'].update(smp_export_choices.get('choice_attributes', {}))
 
         return export_choices
-    
+
     def render(self):
         self.pop_from_session(self.request, 'github_export_choice_warnings')
-        redirect_url = self.request.build_absolute_uri()        
+        redirect_url = self.request.build_absolute_uri()
         self.process_app_context(self.request, redirect_url=redirect_url)
-        
+
         access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
         if access_token is None:
             return self.authorize(self.request)
-        
+
         context = {
             'form': self.get_form(
-                self.request, 
-                GitHubExportForm, 
+                self.request,
+                GitHubExportForm,
                 export_choices=self.export_choices
             )
         }
         return render(self.request, 'plugins/github_export_form.html', context, status=200)
 
-    def submit(self):       
+    def submit(self):
         if 'cancel' in self.request.POST:
             self.pop_from_session(self.request, 'github_more_repos_available')
             self.pop_from_session(self.request, 'github_repo_choices')
@@ -114,23 +125,23 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 return redirect('project', self.project.id)
 
         self.store_in_session(self.request, 'github_more_repos_available', False)
-        
+
         form = self.get_form(self.request, GitHubExportForm, self.request.POST, export_choices=self.export_choices)
         if form.is_valid():
-            
+
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             export_choice_warnings = self.get_from_session(self.request, 'github_export_choice_warnings')
             new_repo = form.cleaned_data.get('new_repo')
-            
+
             if not new_repo and export_choice_warnings is None:
                 context, export_choice_warnings = self.validate_export_choices(form.cleaned_data)
 
                 if len(export_choice_warnings) > 0:
                     return render(self.request, 'plugins/github_export_form.html', context, status=200)
-            
+
             # 2. Create file content for selected choices and export them
             request_data, repo_html_url = self.process_form_data(form.cleaned_data)
-            
+
             if repo_html_url is not None:
                 self.store_in_session(self.request, 'github_export_repo', repo_html_url)
 
@@ -141,18 +152,21 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             else:
                 return render(self.request, 'core/error.html', {
                     'title': _('Something went wrong'),
-                    'errors': [_('Either export choices could not be created or repository content would have been overwritten without a warning.')]
+                    'errors': [_(
+                        'Either the export choices could not be created or '
+                        'the repository content would have been overwritten without a warning.'
+                    )]
                 }, status=200)
-            
+
             if new_repo:
                 return self.make_request(self.request, 'post', url, json=request_data[0])
             else:
                 return self.make_request(self.request, 'put', url, json=request_data[0])
-            
+
         new_repo = True if 'new_repo' in form.data else False
         context = {'form': form}
         return render(self.request, 'plugins/github_export_form.html', context, status=200)
-    
+
     def validate_sha(self, project, export_choice, url, access_token):
         """Validate the Github sha stored in the project."""
 
@@ -166,17 +180,20 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             if stored_sha != github_sha:
                 set_record_id_on_project_value(project, github_sha, export_choice)
-                logger.warning(f'GitHubExportProvider - Updating stored sha: stored value for export choice "{export_choice}" does not match with corresponding sha from github.')
+                logger.warning('GitHubExportProvider - Updating stored sha: stored value for export choice '
+                                f'"{export_choice}" does not match with corresponding sha from github.')
 
             return github_sha
-            
+
         elif response.status_code == 404:
-            logger.error(f'GitHubExportProvider - No matching resource for export choice "{export_choice}" found in Github, deleting stored sha if it exists')
+            logger.error(f'GitHubExportProvider - No matching resource for export choice "{export_choice}" found '
+                         'in Github, deleting stored sha if it exists')
             # the export_choice does not exist in GitHub, delete the corresponding sha from the project.value.text
             clear_project_value_with_record_id(project, export_choice)
         else:
             # Log any other unexpected response code
-            logger.error(f'GitHubExportProvider - Error validating sha for export choice "{export_choice}": {response.status_code}')
+            logger.error(f'GitHubExportProvider - Error validating sha for export choice "{export_choice}": '
+                         f'{response.status_code}')
 
     def check_file_paths(self, exports, repo, branch):
         access_token = self.get_from_session(self.request, 'access_token')
@@ -189,26 +206,28 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             sha = self.validate_sha(self.project, choice_key, url, access_token)
             if sha:
-                export_choice_warnings[choice_key] = [gettext('A file with the same path exists in the selected repository and will be overwritten')]
+                export_choice_warnings[choice_key] = [
+                    gettext('A file with the same path exists in the selected repository and will be overwritten')
+                ]
 
         return export_choice_warnings, choice_keys, exports, branch
-    
+
     def validate_export_choices(self, form_data):
         export_choice_warnings, selected_choice_keys, checked_export_choices, checked_branch = self.check_file_paths(
-            form_data.get('exports'), 
-            form_data.get('repo'), 
+            form_data.get('exports'),
+            form_data.get('repo'),
             form_data.get('branch')
         )
-        
+
         self.store_in_session(self.request, 'github_export_choice_warnings', export_choice_warnings)
         self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
         self.store_in_session(self.request, 'github_checked_branch', checked_branch)
-        
+
         selected_choices = [c for c in self.export_choices.get('choices', []) if c[2] in selected_choice_keys]
         form = self.get_form(
-            self.request, 
-            GitHubExportForm, 
-            self.request.POST, 
+            self.request,
+            GitHubExportForm,
+            self.request.POST,
             export_choices={
                 **self.export_choices,
                 'choices': selected_choices,
@@ -231,17 +250,17 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
     def render_export_content(self, choice_key):
         response = self.render_export(choice_key)
-        try:            
+        try:
             binary = response.content
             base64_bytes_of_content = base64.b64encode(binary)
             base64_string_of_content = base64_bytes_of_content.decode('utf-8')
             choice_content = base64_string_of_content
-        except:
+        except AttributeError:
             logger.warning(f'GitHubExportProvider - No content created for {choice_key}')
             choice_content = None
 
         return choice_content
-    
+
     def process_form_data(self, form_data, update_without_warning=False):
         self.pop_from_session(self.request, 'github_export_choice_warnings')
         request_data = []
@@ -258,42 +277,46 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             repo = 'repo_placeholder'
         else:
-            repo = form_data['repo'].replace('https://github.com/', '').strip('/')    
-            repo_html_url = 'https://github.com/{repo}'.format(repo=repo)
+            repo = form_data['repo'].replace('https://github.com/', '').strip('/')
+            repo_html_url = f'https://github.com/{repo}'
 
         # EXPORT OPTIONS
         checked_export_choices = self.pop_from_session(self.request, 'github_checked_export_choices')
         checked_branch = self.pop_from_session(self.request, 'github_checked_branch')
         branch = 'main' if new_repo else form_data['branch']
-        
+
         exports = form_data.get('exports')
         processed_exports = []
         for e in exports:
             choice_key, file_path = e.split(',')
             initial_file_path = file_path if new_repo else next(
-                (exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key), 
+                (exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key),
                 file_path
             )
             initial_branch = 'main' if new_repo else checked_branch
-            
+
             if file_path != initial_file_path or branch != initial_branch:
                 new_export_choice_warnings, __, ___, ____ = self.check_file_paths([e], form_data['repo'], branch)
                 if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
                     processed_exports.append({
                         'key': choice_key,
-                        'label': next((c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key), choice_key), 
+                        'label': next(
+                            (c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key),
+                            choice_key
+                        ),
                         'success': False,
-                        'processing_status': _('not exported - it would have overwritten existing file in repository without a warning.')
+                        'processing_status': _('not exported - it would have overwritten existing file '
+                                               'in repository without a warning.')
                     })
                     continue
-            
+
             choice_request_data = {}
             stored_sha = get_record_id_from_project_value(self.project, choice_key)
             if stored_sha is not None:
                 choice_request_data['sha'] = stored_sha
             clear_project_value_with_record_id(self.project, choice_key)
 
-            content = self.render_export_content(choice_key) 
+            content = self.render_export_content(choice_key)
             if content is None:
                 success = False
                 processing_status = _('not exported - it could not be created.')
@@ -310,7 +333,10 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 })
                 request_data.append(choice_request_data)
 
-            choice_label = next((c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key), choice_key)
+            choice_label = next(
+                (c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key),
+                choice_key
+            )
             processed_exports.append({
                 'key': choice_key,
                 'label': choice_label,
@@ -318,35 +344,37 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 'processing_status': processing_status
             })
 
-        successfully_processed_exports = list(filter(lambda x: x['success'] == True, processed_exports))
+        successfully_processed_exports = list(filter(lambda x: x['success'], processed_exports))
         if len(successfully_processed_exports) == 0:
-            logger.warning(f'GitHubExportProvider - No export content could be created for the selected choices: {exports}.')
-            return None, None 
+            logger.warning('GitHubExportProvider - No export content could be created for the '
+                           f'selected choices: {exports}.')
+            return None, None
 
         self.store_in_session(self.request, 'github_processed_exports', processed_exports)
-        
+
         return request_data, repo_html_url
-   
+
     def put_data(self, request, request_data, processed_exports):
         access_token = self.get_from_session(request, 'access_token')
-        
-        for json in request_data:
-            url = json.pop('url')
-            choice_key = json.pop('choice_key')
-            response = requests.put(url, json=json, headers=self.get_authorization_headers(access_token))
+
+        for file_json in request_data:
+            url = file_json.pop('url')
+            choice_key = file_json.pop('choice_key')
+            response = requests.put(url, json=file_json, headers=self.get_authorization_headers(access_token))
 
             try:
                 response.raise_for_status()
-            except Exception as e:
-                logger.error(f'GitHubExportProvider - Error putting {choice_key} to github: {e}')
+            except requests.HTTPError:
+                logger.error(f'GitHubExportProvider - Error putting {choice_key} to github: '
+                             f'{response.content} ({response.status_code})')
                 choice_label = next(
-                    (c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key), 
+                    (c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key),
                     choice_key
                 )
                 index, status = next(
-                    ((i, s) for i, s in enumerate(processed_exports) if s['key'] == choice_key), 
-                    (   
-                        len(processed_exports), 
+                    ((i, s) for i, s in enumerate(processed_exports) if s['key'] == choice_key),
+                    (
+                        len(processed_exports),
                         {
                             'key': choice_key,
                             'label': choice_label,
@@ -359,11 +387,11 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 processed_exports[index] = status
 
         return processed_exports
-    
+
     def post_success(self, request, response):
         repo = response.json().get('full_name')
         repo_html_url = response.json().get('html_url')
-        
+
         request_data = self.pop_from_session(request, 'github_export_data')
         processed_exports = self.pop_from_session(request, 'github_processed_exports')
         self.pop_from_session(request, 'github_more_repos_available')
@@ -372,18 +400,18 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         if isinstance(request_data , list):
             request_data = [
-                {**json, 'url': json['url'].replace('repo_placeholder', repo)} 
-                for json in request_data
+                {**file_json, 'url': file_json['url'].replace('repo_placeholder', repo)}
+                for file_json in request_data
             ]
             processed_exports = self.put_data(request, request_data, processed_exports)
-        
-        successful_exports = list(filter(lambda x: x['success'] == True, processed_exports))
+
+        successful_exports = list(filter(lambda x: x['success'], processed_exports))
         if len(successful_exports) == len(processed_exports):
             return redirect(repo_html_url)
 
         context = {'repo_html_url': repo_html_url, 'processed_exports': processed_exports}
         return render(request, 'plugins/github_export_success.html', context, status=200)
-                
+
     def put_success(self, request, response):
         request_data = self.pop_from_session(request, 'github_export_data')
         repo_html_url = self.pop_from_session(request, 'github_export_repo')
@@ -395,20 +423,20 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         if isinstance(request_data , list):
             processed_exports = self.put_data(request, request_data, processed_exports)
 
-        successful_exports = list(filter(lambda x: x['success'] == True, processed_exports))
+        successful_exports = list(filter(lambda x: x['success'], processed_exports))
         if len(successful_exports) == len(processed_exports):
             return redirect(repo_html_url)
-        
+
         context = {'repo_html_url': repo_html_url, 'processed_exports': processed_exports}
         return render(request, 'plugins/github_export_success.html', context, status=200)
-        
+
 
 class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     add_label = _('Add GitHub integration')
     send_label = _('Send to GitHub')
     description = _('This integration allows the creation of issues in arbitrary GitHub repositories. '
                     'The upload of attachments is not supported by GitHub.')
-    
+
     _fields = {
         'repo_url': {
             'key': 'repo_url',
@@ -423,15 +451,12 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
             'secret': True
         }
     }
-    
+
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
         if repo_url:
             repo = repo_url.replace('https://github.com', '').strip('/')
-            return '{api_url}/repos/{repo}/issues'.format(
-                api_url=self.api_url, 
-                repo=repo
-            )
+            return f'{self.api_url}/repos/{repo}/issues'
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
         return {
@@ -477,9 +502,9 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     @property
     def fields(self):
         return self._fields.values()
-    
+
     @fields.setter
-    def fields(self, new_fields):        
+    def fields(self, new_fields):
         if isinstance(new_fields, dict):
             for k, v in new_fields.items():
                 self._fields[k] = v
@@ -493,7 +518,7 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
         github_app_repo_url = {**self._fields['repo_url']}
         if repo_choices is not None:
             github_app_repo_url['widget'] = forms.RadioSelect(choices=repo_choices)
-            
+
         if repo_help_text is not None:
             github_app_repo_url['help'] = repo_help_text
 
