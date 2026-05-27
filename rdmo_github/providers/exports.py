@@ -11,7 +11,6 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 import requests
-
 from rdmo_maus.exports.smp_exports import SMPExportMixin
 from rdmo_maus.forms.validators import FilePathExtensionValidator, validate_file_path
 
@@ -181,19 +180,19 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             if stored_sha != github_sha:
                 set_record_id_on_project_value(project, github_sha, export_choice)
                 logger.warning('GitHubExportProvider - Updating stored sha: stored value for export choice '
-                                f'"{export_choice}" does not match with corresponding sha from github.')
+                                '"%s" does not match with corresponding sha from github.', export_choice)
 
             return github_sha
 
         elif response.status_code == 404:
-            logger.error(f'GitHubExportProvider - No matching resource for export choice "{export_choice}" found '
-                         'in Github, deleting stored sha if it exists')
+            logger.error('GitHubExportProvider - No matching resource for export choice "%s" found '
+                         'in Github, deleting stored sha if it exists', export_choice)
             # the export_choice does not exist in GitHub, delete the corresponding sha from the project.value.text
             clear_project_value_with_record_id(project, export_choice)
         else:
             # Log any other unexpected response code
-            logger.error(f'GitHubExportProvider - Error validating sha for export choice "{export_choice}": '
-                         f'{response.status_code}')
+            logger.error('GitHubExportProvider - Error validating sha for '
+                         'export choice "%s": %s', export_choice, response.status_code)
 
     def check_file_paths(self, exports, repo, branch):
         access_token = self.get_from_session(self.request, 'access_token')
@@ -256,7 +255,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             base64_string_of_content = base64_bytes_of_content.decode('utf-8')
             choice_content = base64_string_of_content
         except AttributeError:
-            logger.warning(f'GitHubExportProvider - No content created for {choice_key}')
+            logger.warning('GitHubExportProvider - No content created for %s', choice_key)
             choice_content = None
 
         return choice_content
@@ -347,7 +346,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         successfully_processed_exports = list(filter(lambda x: x['success'], processed_exports))
         if len(successfully_processed_exports) == 0:
             logger.warning('GitHubExportProvider - No export content could be created for the '
-                           f'selected choices: {exports}.')
+                           'selected choices: %s.', exports)
             return None, None
 
         self.store_in_session(self.request, 'github_processed_exports', processed_exports)
@@ -365,8 +364,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             try:
                 response.raise_for_status()
             except requests.HTTPError:
-                logger.error(f'GitHubExportProvider - Error putting {choice_key} to github: '
-                             f'{response.content} ({response.status_code})')
+                logger.error('GitHubExportProvider - Error putting %s to github: '
+                             '%s (%s)', choice_key, response.content, response.status_code)
                 choice_label = next(
                     (c[1][0] for c in self.export_choices.get('choices', []) if c[2] == choice_key),
                     choice_key

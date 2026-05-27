@@ -6,7 +6,6 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 import requests
-
 from rdmo_maus.imports.mixins import SMPRepoImportMixin
 
 from rdmo.core.imports import handle_fetched_file
