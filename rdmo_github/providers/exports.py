@@ -286,8 +286,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         exports = form_data.get('exports')
         processed_exports = []
-        for e in exports:
-            choice_key, file_path = e.split(',')
+        for export in exports:
+            choice_key, file_path = export.split(',')
             initial_file_path = file_path if new_repo else next(
                 (exp.split(',')[1] for exp in checked_export_choices if exp.split(',')[0] == choice_key),
                 file_path
@@ -295,7 +295,9 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             initial_branch = 'main' if new_repo else checked_branch
 
             if file_path != initial_file_path or branch != initial_branch:
-                new_export_choice_warnings, __, ___, ____ = self.check_file_paths([e], form_data['repo'], branch)
+                new_export_choice_warnings, _choice_keys, _exports, _branch = self.check_file_paths(
+                    [export], form_data['repo'], branch
+                )
                 if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
                     processed_exports.append({
                         'key': choice_key,
