@@ -208,6 +208,11 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
                 if 'citation' in imports
                 else None
             ),
+            'codemeta': (
+                self.get_request_url(repo, path=imports.get('codemeta'), ref=form_data.get('ref'))
+                if 'codemeta' in imports
+                else None
+            ),
             'license': self.get_request_url(repo) # independent of branch, last changes to LICENSE
         }
         selected_urls = {k:urls.get(k) for k in ['repo', *imports.keys()]}
@@ -351,8 +356,8 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             dependency_licenses_str = None
 
         return {'dependencies': dependencies_str, 'dependency_licenses': dependency_licenses_str}
-
-    def get_citation(self, url, headers):
+    
+    def _get_file(self, url, headers):
         content = None
 
         response = requests.get(url, headers=headers)
@@ -365,6 +370,12 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             pass
 
         return content
+
+    def get_citation(self, url, headers):
+        return self._get_file(url, headers)
+    
+    def get_codemeta(self, url, headers):
+        return self._get_file(url, headers)
 
 
 class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
