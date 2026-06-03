@@ -356,7 +356,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             dependency_licenses_str = None
 
         return {'dependencies': dependencies_str, 'dependency_licenses': dependency_licenses_str}
-    
+
     def _get_file(self, url, headers):
         content = None
 
@@ -373,7 +373,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
     def get_citation(self, url, headers):
         return self._get_file(url, headers)
-    
+
     def get_codemeta(self, url, headers):
         return self._get_file(url, headers)
 
