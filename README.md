@@ -4,8 +4,8 @@ rdmo-plugins-github
 This repo implements three plugins for [RDMO](https://github.com/rdmorganiser/rdmo):
 
 * an [issue provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#issue-providers), which lets users push their tasks from RDMO to GitHub issues.
-* an [import provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private) repositories as well as repository metadata (dependecy graph, languages, license or CITATION).
-* an [export provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-export-plugins), which can be used to export projects to (public or private) repositories. For SMP projects, this plugin also provides other export choices that reuse project data (e.g. README, CITATION or LICENSE files).
+* an [import provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private) repositories. For SMP projects, repository metadata (dependecy graph, languages, license, CITATION or CodeMeta) can also be imported.
+* an [export provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-export-plugins), which can be used to export projects to (public or private) repositories. For SMP projects, this plugin also provides other export choices that reuse project data (e.g. README, CITATION, CodeMeta or LICENSE files).
 
 The plugins use [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
 
@@ -44,7 +44,7 @@ For the import, add the plugin to `PROJECT_IMPORTS` and its key to `PROJECT_IMPO
 
 ```python
 PROJECT_IMPORTS = [
-    ('github', _('GitHub'), 'rdmo_github.providers.imports.GitHubImport'),
+    ('github', _('GitHub'), 'rdmo_github.providers.imports.GitHubImportProvider'),
 ]
 
 PROJECT_IMPORTS_LIST += ['github']
@@ -58,7 +58,7 @@ PROJECT_EXPORTS += [
 ]
 ```
 
-The export and import plugins use the plugin [rdmo_maus](https://github.com/MPDL/rdmo-plugins-maus). This plugin provides the SMP specific export choices as well as a custom field used in their form templates. Install rdmo_maus in your RDMO virtual environment using pip (directly from GitHub):
+The export and import plugins use the plugin [rdmo_maus](https://github.com/MPDL/rdmo-plugins-maus). This plugin provides the SMP specific import and export choices as well as a custom field used in their form templates. Install rdmo_maus in your RDMO virtual environment using pip (directly from GitHub):
 
 ```bash
 pip install git+https://github.com/MPDL/rdmo-plugins-maus
@@ -70,14 +70,14 @@ Usage
 
 ### Issue provider
 
-Users can add a GitHub intergration to their projects. They need to provide the URL to their repository.  Afterward, project tasks can be pushed to the GitHub repository as issues.
+Users can add a GitHub intergration to their projects. They need to provide the URL to their repository. Afterward, project tasks can be pushed to the GitHub repository as issues.
 
 Additionally, a secret can be added to enable GitHub to communicate to RDMO when an issue has been closed. For this, a webhook has to be added at `<https://github.com/<user>/<repo>/settings/hooks`. The webhook has to point to `https://<rdmo_url>/projects/<project_id>/integrations/<integration_id>/webhook/`, the content type is `application/json` and the secret has to be exactly the secret entered in the integration.
 
 ### Project import
 
-Users can import xml project files as well as repository metadata (dependency graph, languages, license or CITATION file) directly from a public or private GitHub repository. The metadata import is optimized for SMP projects; i.e. other catalogs may not have matching questions (and attributes) for the metadata or use different attributes. In those cases, the plugin imports only a subset of the metadata found in the repository.
+Users can import xml project files, and for SMP projects also repository metadata (dependency graph, languages, license, CITATION or CodeMeta files) directly from a public or private GitHub repository.
 
 ### Project export
 
-Users can export project files directly to a public or private GitHub repository. For SMP projects, they can also export custom files (README, CITATION, LICENSE) created with the SMP project's data. They can choose to export to an existing repository or to create a new one.
+Users can export project files directly to a public or private GitHub repository. For SMP projects, they can also export custom files (README, CITATION, CodeMeta, LICENSE) created with the SMP project's data. They can choose to export to an existing repository or to create a new one.
