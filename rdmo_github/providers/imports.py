@@ -9,7 +9,6 @@ import requests
 from rdmo_maus.imports.mixins import SMPRepoImportMixin
 
 from rdmo.core.imports import handle_fetched_file
-from rdmo.projects.imports import RDMOXMLImport
 
 from ..forms.forms import GitHubImportForm
 from ..mixins import GitHubProviderMixin
@@ -90,7 +89,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         failed_import_choices = []
         for c in self.import_choices.get('choices', []):
-            if isinstance(import_choice_warnings, dict) and c[2] in import_choice_warnings.keys():
+            if isinstance(import_choice_warnings, dict) and c[2] in import_choice_warnings:
                 choice_label = c[1][0] if isinstance(c[1], tuple) else c[1]
                 failed_import_choices.append(choice_label)
 
@@ -144,7 +143,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             # Only an xml file was imported and no processing is needed
             if len(self.import_choices) == 0:
                 xml_url = self.process_form_data(form.cleaned_data, xml_url_only=True)
-                self.make_request(self.request, 'get', xml_url)
+                return self.make_request(self.request, 'get', xml_url)
 
             # Multiple-source imports
             # user can select multiple import sources, so processing is needed
@@ -188,8 +187,8 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
         repo = form_data.get('other_repo') if other_repo_check else form_data.get('repo')
 
         imports = {}
-        for i in form_data.get('imports', []):
-            i_list = i.split(',')
+        for _import in form_data.get('imports', []):
+            i_list = _import.split(',')
             key = i_list[0]
             value = i_list[1] if len(i_list) > 1 else None
             imports[key] = value
@@ -279,11 +278,11 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
         # user can select multiple import sources, so processing is needed
         self.pop_from_session(self.request, 'github_import_choice_warnings')
 
-        new_choice_warnings, __, new_urls = self.check_urls(form_data)
+        new_choice_warnings, _new_choice_keys, new_urls = self.check_urls(form_data)
 
         selected_urls = {}
         for choice_key, url in new_urls.items():
-            if choice_key not in new_choice_warnings.keys():
+            if choice_key not in new_choice_warnings:
                 selected_urls[choice_key] = url
 
         return selected_urls, new_choice_warnings
@@ -325,15 +324,15 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
         dependencies_str = ''
         dependency_licenses = {}
         repo_package_name = sbom.get('name')
-        for d in sbom.get('packages', []):
-            name = d.get('name')
+        for dependency in sbom.get('packages', []):
+            name = dependency.get('name')
             if name == repo_package_name: # repo itself is listed as package
                 continue
 
             dependencies_str += f'{name}\n'
 
-            license = d.get('licenseConcluded') if 'licenseConcluded' in d else (
-                d.get('licenseDeclared') if 'licenseDeclared' in d else None
+            license = dependency.get('licenseConcluded') if 'licenseConcluded' in dependency else (
+                dependency.get('licenseDeclared') if 'licenseDeclared' in dependency else None
             )
             if isinstance(license, str):
                 license = license.split(' AND')
@@ -376,69 +375,3 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
     def get_codemeta(self, url, headers):
         return self._get_file(url, headers)
-
-
-class GitHubImport(GitHubProviderMixin, RDMOXMLImport):
-
-    def render(self):
-        redirect_url = self.request.build_absolute_uri()
-        self.process_app_context(self.request, redirect_url=redirect_url)
-
-        access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
-        if access_token is None:
-            return self.authorize(self.request)
-
-        context = {
-            'source_title': 'GitHub',
-            'form': self.get_form(self.request, GitHubImportForm)
-        }
-        return render(self.request, 'plugins/github_import_form.html', context, status=200)
-
-    def submit(self):
-        if 'cancel' in self.request.POST:
-            self.pop_from_session(self.request, 'github_more_repos_available')
-            self.pop_from_session(self.request, 'github_repo_choices')
-            self.pop_from_session(self.request, 'github_repos_page')
-
-            if self.current_project is None:
-                return redirect('projects')
-            else:
-                return redirect('project', self.current_project.id)
-
-        self.store_in_session(self.request, 'github_more_repos_available', False)
-
-        form = self.get_form(self.request, GitHubImportForm, self.request.POST)
-        if form.is_valid():
-            self.request.session['import_source_title'] = self.source_title = form.cleaned_data['path']
-
-            url = self.process_form_data(form.cleaned_data)
-            return self.make_request(self.request, 'get', url)
-
-        context = {
-            'source_title': 'GitHub',
-            'form': form
-        }
-        return render(self.request, 'plugins/github_import_form.html', context, status=200)
-
-    def process_form_data(self, form_data):
-        other_repo_check  = form_data.get('other_repo_check')
-        if other_repo_check:
-            repo = form_data.get('other_repo')
-        else:
-            repo = form_data.get('repo')
-
-        url = self.get_request_url(repo, path=form_data.get('imports'), ref=form_data.get('ref'))
-        return url
-
-    def get_success(self, request, response):
-        file_content = response.json().get('content')
-        request.session['import_file_name'] = handle_fetched_file(base64.b64decode(file_content))
-
-        self.pop_from_session(request, 'github_more_repos_available')
-        self.pop_from_session(request, 'github_repo_choices')
-        self.pop_from_session(request, 'github_repos_page')
-
-        if self.current_project:
-            return redirect('project_update_import', self.current_project.id)
-        else:
-            return redirect('project_create_import')
