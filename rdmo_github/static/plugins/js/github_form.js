@@ -21,16 +21,3 @@ function toggleRepoFields(cbId, checkedClass, uncheckedClass) {
     uncheckedCollection[0].style.display = 'block'
   }
 }
-
-function hideAllChoiceWarningMessages(text, choiceCount) {
-  let duration = 1000
-  clearTimeout(text._timer)
-  text._timer = setTimeout(()=>{
-    for (let i=0; i<choiceCount; i++) {
-      let choiceWarningMessages = document.getElementById(`id_warnings_${i}`)
-      if (choiceWarningMessages) {
-        choiceWarningMessages.style.display = 'none'
-      }
-    }
-  }, duration)
-}

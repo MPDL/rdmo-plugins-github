@@ -162,9 +162,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             else:
                 return self.make_request(self.request, 'put', url, json=request_data[0])
 
-        new_repo = True if 'new_repo' in form.data else False
-        context = {'form': form}
-        return render(self.request, 'plugins/github_export_form.html', context, status=200)
+        return render(self.request, 'plugins/github_export_form.html', {'form': form}, status=200)
 
     def validate_sha(self, project, export_choice, url, access_token):
         """Validate the Github sha stored in the project."""
@@ -298,7 +296,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 new_export_choice_warnings, _choice_keys, _exports, _branch = self.check_file_paths(
                     [export], form_data['repo'], branch
                 )
-                if choice_key in new_export_choice_warnings.keys() and not update_without_warning:
+                if choice_key in new_export_choice_warnings and not update_without_warning:
                     processed_exports.append({
                         'key': choice_key,
                         'label': next(
