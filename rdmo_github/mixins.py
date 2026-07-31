@@ -156,7 +156,7 @@ class GitHubProviderMixin(OauthProviderMixin):
             'post': {'request_method': requests.post, 'success_method': self.post_success},
             'put': {'request_method': requests.put, 'success_method': self.put_success}
         }
-        if method not in methods.keys():
+        if method not in methods:
             raise ValueError(f"Unsupported request method: {method}")
 
         access_token = self.get_from_session(request, 'access_token')
@@ -167,11 +167,11 @@ class GitHubProviderMixin(OauthProviderMixin):
             request_method, success_method = methods[method].values()
 
             data_processing_params = {}
-            if 'data_processing_params' in kwargs.keys():
+            if 'data_processing_params' in kwargs:
                 data_processing_params = kwargs['data_processing_params']
 
             headers = self.get_authorization_headers(access_token)
-            if 'multipart' in kwargs.keys():
+            if 'multipart' in kwargs:
                 multipart = kwargs['multipart']
                 if apply_data_processing:
                     processed_multipart = self.process_request_data(
@@ -185,7 +185,7 @@ class GitHubProviderMixin(OauthProviderMixin):
 
                 headers['Content-Type'] = multipart_encoder.content_type
                 response = request_method(url, data=multipart_encoder, headers=headers)
-            elif 'files' in kwargs.keys():
+            elif 'files' in kwargs:
                 files = kwargs['files']
                 if apply_data_processing:
                     processed_files = self.process_request_data(
@@ -196,7 +196,7 @@ class GitHubProviderMixin(OauthProviderMixin):
                     response = request_method(url, files=processed_files, headers=headers)
                 else:
                     response = request_method(url, files=files, headers=headers)
-            elif 'json' in kwargs.keys():
+            elif 'json' in kwargs:
                 json = kwargs['json']
                 if apply_data_processing:
                     processed_json = self.process_request_data(
@@ -243,6 +243,11 @@ class GitHubProviderMixin(OauthProviderMixin):
         return HttpResponseRedirect(url)
 
     def callback(self, request):
+        if self.__class__.__name__ == "GitHubIssueProvider":
+            # integration's submit button (OauthIssueProvider.send_issue()) calls OauthProviderMixin.post()
+            # which expects OauthProviderMixin.callback() instead of GitHubProviderMixin.callback()
+            return OauthProviderMixin.callback(self, request)
+
         setup_action = request.GET.get('setup_action', None)
         if setup_action != 'update' and request.GET.get('state') != self.pop_from_session(request, 'state'):
             return render(request, 'core/error.html', {
