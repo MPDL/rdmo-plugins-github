@@ -37,7 +37,7 @@ class GitHubExportForm(GithubBaseForm):
             self.fields['exports'].widget.choice_warnings = export_choices.get('choice_warnings', {})
 
     new_repo = forms.BooleanField(
-        label=_('Create new repository'),
+        label=_('Create a new (public) repository'),
         required=False,
         widget=forms.CheckboxInput(
             attrs={
