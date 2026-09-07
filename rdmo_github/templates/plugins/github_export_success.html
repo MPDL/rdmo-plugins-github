@@ -4,7 +4,7 @@
 {% block page %}
 
     <h1>{% trans 'Successful Export to GitHub' %}</h1>
-    
+
     <ul>
         {% for export in processed_exports %}
             <li>{{ export.label }}: {{ export.processing_status }}</li>
