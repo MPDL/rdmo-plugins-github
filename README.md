@@ -4,7 +4,7 @@ rdmo-plugins-github
 This repo implements three plugins for [RDMO](https://github.com/rdmorganiser/rdmo):
 
 * an [issue provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#issue-providers), which lets users push their tasks from RDMO to GitHub issues.
-* an [import provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private) repositories. For SMP projects, repository metadata (dependecy graph, languages, license, CITATION or CodeMeta) can also be imported.
+* an [import provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-import-plugins), which can be used to import projects from (public or private) repositories. For SMP projects, repository metadata (dependency graph, languages, license, CITATION or CodeMeta) can also be imported.
 * an [export provider](https://rdmo.readthedocs.io/en/latest/plugins/index.html#project-export-plugins), which can be used to export projects to (public or private) repositories. For SMP projects, this plugin also provides other export choices that reuse project data (e.g. README, CITATION, CodeMeta or LICENSE files).
 
 The plugins use [OAUTH 2.0](https://oauth.net/2/), so that users use their respective accounts in both systems.
@@ -19,16 +19,14 @@ Install the plugin in your RDMO virtual environment using pip (directly from Git
 pip install git+https://github.com/rdmorganiser/rdmo-plugins-github
 ```
 
-An *App* has to be registered with GitHub. Go to https://github.com/settings/developers and create an application with your RDMO URL as callback URL. GitHub offers two types of apps: [GitHub Apps](https://docs.github.com/en/apps/using-github-apps/about-using-github-apps) and [OAuth Apps](https://docs.github.com/en/apps/oauth-apps), both app types use [OAUTH 2.0](https://oauth.net/2/).
+An *App* has to be registered with GitHub. Go to https://github.com/settings/developers and create an application with your RDMO URL as callback URL.
 
-The `client_id`, the `client_secret`, the `app_type` (`oauth_app` or `github_app`), and the `github_app_name` ([Register a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)) need to be configured in `config/settings/local.py`:
+The `client_id` and the `client_secret` need to be configured in `config/settings/local.py`:
 
 ```python
 GITHUB_PROVIDER = {
     'client_id': '',
-    'client_secret': '',
-    'app_type': 'oauth_app' | 'github_app',
-    'github_app_name': ''
+    'client_secret': ''
 }
 ```
 
@@ -42,7 +40,7 @@ For the issue provider, add the plugin to `PROJECT_ISSUE_PROVIDERS` in `config/s
 
 ```python
 PROJECT_ISSUE_PROVIDERS += [
-    ('github', _('GitHub Provider'), 'rdmo_github.providers.exports.GitHubIssueProvider'),
+    ('github', _('GitHub Provider'), 'rdmo_github.providers.issues.GitHubIssueProvider'),
 ]
 ```
 
@@ -64,7 +62,7 @@ PROJECT_EXPORTS += [
 ]
 ```
 
-The export and import plugins use the plugin [rdmo-plugins-maus](https://github.com/MPDL/rdmo-plugins-maus). This plugin provides the SMP specific import and export choices as well as a custom field used in their form templates. `rdmo-plugins-maus` is installed as a dependency of `rdmo-plugins-github`, but it must be also included in `INSTALLED_APPS` in `config/settings/local.py`:
+The export and import plugins use the plugin [rdmo-plugins-maus](https://github.com/MPDL/rdmo-plugins-maus). This plugin provides the SMP specific import and export choices as well as custom fields used in their form templates. `rdmo-plugins-maus` is installed as a dependency of `rdmo-plugins-github`, but it must be also included in `INSTALLED_APPS` in `config/settings/local.py`:
 
 ```python
 INSTALLED_APPS += ['rdmo_maus']
@@ -76,7 +74,7 @@ Usage
 
 ### Issue provider
 
-Users can add a GitHub intergration to their projects. They need to provide the URL to their repository. Afterward, project tasks can be pushed to the GitHub repository as issues.
+Users can add a GitHub integration to their projects. They need to provide the URL to their repository. Afterward, project tasks can be pushed to the GitHub repository as issues.
 
 Additionally, a secret can be added to enable GitHub to communicate to RDMO when an issue has been closed. For this, a webhook has to be added at `<https://github.com/<user>/<repo>/settings/hooks`. The webhook has to point to `https://<rdmo_url>/projects/<project_id>/integrations/<integration_id>/webhook/`, the content type is `application/json` and the secret has to be exactly the secret entered in the integration.
 
