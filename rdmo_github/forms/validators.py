@@ -13,9 +13,7 @@ def validate_new_repo_name(value):
 
     return validate_text_field(field_name, value, min_length, max_length, not_allowed_pattern, allowed_char_name_str)
 
+
 def validate_import_file_path(value):
     if not value.endswith('.xml'):
-        raise ValidationError(
-            _('File must be in XML format.'),
-            code='invalid'
-        )
+        raise ValidationError(_('File must be in XML format.'), code='invalid')
