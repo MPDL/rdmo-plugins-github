@@ -1,23 +1,38 @@
-const cbId = document.currentScript.getAttribute('cbId')
-const checkedClass = document.currentScript.getAttribute('checkedClass')
-const uncheckedClass = document.currentScript.getAttribute('uncheckedClass')
+const {checkboxId, checkedClass, uncheckedClass} = document.currentScript.dataset
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (cbId && checkedClass && uncheckedClass) {
-    toggleRepoFields(cbId, checkedClass, uncheckedClass)
+  if (checkboxId && checkedClass && uncheckedClass) {
+    toggleRepoFields(checkboxId, checkedClass, uncheckedClass)
   }
 })
 
-function toggleRepoFields(cbId, checkedClass, uncheckedClass) {
-  const checkBox = document.getElementById(cbId)
+function toggleRepoFields(checkboxId, checkedClass, uncheckedClass) {
+  const checkBox = document.getElementById(checkboxId)
   let checkedCollection = document.getElementsByClassName(checkedClass)
   let uncheckedCollection = document.getElementsByClassName(uncheckedClass)
-    
+
   if (checkBox.checked == true){
-    checkedCollection[0].style.display = 'block'
-    uncheckedCollection[0].style.display = 'none'
+    if (! checkedCollection[0].classList.contains('show')){
+      checkedCollection[0].classList.add('show')
+    }
+
+    if (! uncheckedCollection[0].classList.contains('hidden')){
+      uncheckedCollection[0].classList.add('hidden')
+    }
+
+    checkedCollection[0].classList.replace('hidden', 'show')
+    uncheckedCollection[0].classList.replace('show', 'hidden')
+
   } else {
-    checkedCollection[0].style.display = 'none'
-    uncheckedCollection[0].style.display = 'block'
+    if (! checkedCollection[0].classList.contains('hidden')){
+      checkedCollection[0].classList.add('hidden')
+    }
+
+    if (! uncheckedCollection[0].classList.contains('show')){
+      uncheckedCollection[0].classList.add('show')
+    }
+
+    checkedCollection[0].classList.replace('show', 'hidden')
+    uncheckedCollection[0].classList.replace('hidden', 'show')
   }
 }
