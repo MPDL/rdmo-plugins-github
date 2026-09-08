@@ -13,8 +13,10 @@ from ..mixins import GitHubProviderMixin
 class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
     add_label = _('Add GitHub integration')
     send_label = _('Send to GitHub')
-    description = _('This integration allow the creation of issues in arbitrary GitHub repositories. '
-                    'The upload of attachments is not supported by GitHub.')
+    description = _(
+        'This integration allow the creation of issues in arbitrary GitHub repositories. '
+        'The upload of attachments is not supported by GitHub.'
+    )
 
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
@@ -23,10 +25,7 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
             return f'https://api.github.com/repos/{repo}/issues'
 
     def get_post_data(self, request, issue, integration, subject, message, attachments):
-        return {
-            'title': subject,
-            'body': message
-        }
+        return {'title': subject, 'body': message}
 
     def get_issue_url(self, response):
         return response.json().get('html_url')
@@ -69,13 +68,13 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
             {
                 'key': 'repo_url',
                 'placeholder': 'https://github.com/username/repo',
-                'help': _('The URL of the GitHub repository to send issues to.')
+                'help': _('The URL of the GitHub repository to send issues to.'),
             },
             {
                 'key': 'secret',
                 'placeholder': 'Secret (random) string',
                 'help': _('The secret for a GitHub webhook to close a task (optional).'),
                 'required': False,
-                'secret': True
-            }
+                'secret': True,
+            },
         ]
