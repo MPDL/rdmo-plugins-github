@@ -162,9 +162,9 @@ msgstr "Sie haben noch keine GitHub-Repositorien."
 
 #: mixins.py:272
 msgid ""
-"These are your 10 most recently updated, accessible GitHub repositories."
+"These are your most recently updated, accessible GitHub repositories."
 msgstr ""
-"Das sind Ihre 10 zuletzt aktualisierten, zugänglichen Github-Repositorien."
+"Das sind Ihre zuletzt aktualisierten, zugänglichen Github-Repositorien."
 
 #: providers/exports.py:31
 msgid "CSV (comma separated)"

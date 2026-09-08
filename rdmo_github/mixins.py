@@ -261,14 +261,11 @@ class GitHubProviderMixin(OauthProviderMixin):
         return repo_choices
 
     def get_repo_form_field_data(self, access_token, minimum_repo_permission):
-        repo_choices = self.get_repo_choices(
-            access_token,
-            minimum_repo_permission,
-        )
+        repo_choices = self.get_repo_choices(access_token, minimum_repo_permission)
 
         if len(repo_choices) == 0:
             repo_help_text = _('You do not have any GitHub repositories yet.')
         else:
-            repo_help_text = _('These are your 10 most recently updated, accessible GitHub repositories.')
+            repo_help_text = _('These are your most recently updated, accessible GitHub repositories.')
 
         return repo_choices, repo_help_text
