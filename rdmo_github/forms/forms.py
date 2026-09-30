@@ -142,10 +142,7 @@ class GitHubImportForm(GithubBaseForm):
                 validators=[validate_import_file_path],
             )
 
-    repo = ChoiceFieldWithOther(
-        label=_('GitHub repository'),
-        required=False,
-    )
+    repo = ChoiceFieldWithOther(label=_('GitHub repository'))
 
     imports = MultivalueCheckboxMultipleChoiceField(
         label=_('Import choices'),
