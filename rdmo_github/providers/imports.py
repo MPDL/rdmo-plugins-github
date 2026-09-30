@@ -19,11 +19,7 @@ logger = logging.getLogger(__name__)
 class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
     @property
     def import_choices(self):
-        smp_import_choices = getattr(self, 'smp_import_choices', None)
-        if smp_import_choices:
-            return smp_import_choices
-
-        return {}
+        return self.smp_import_choices
 
     def render(self):
         self.pop_from_session(self.request, 'github_import_choice_warnings')
