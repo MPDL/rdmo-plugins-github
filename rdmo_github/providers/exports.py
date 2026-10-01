@@ -125,7 +125,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             if repo_html_url is not None:
                 self.store_in_session(self.request, 'github_export_repo', repo_html_url)
 
-            if request_data:
+            self.pop_from_session(self.request, 'github_export_data')
+            if request_data: # enters if request_data is a non-empty list
                 url = request_data[0].pop('url')
                 if len(request_data) > 1:
                     self.store_in_session(self.request, 'github_export_data', request_data[1:])
