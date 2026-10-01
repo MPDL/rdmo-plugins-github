@@ -21,9 +21,9 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  - repo: https://github.com/crate-ci/typos
-    rev: 5745f2a8dd91cd7b684680e2e10a2b388ba6e5cf  # frozen: v1
+  - repo: https://github.com/rdmorganiser/mirrors-typos
+    rev: 02801cbe232e697a7bbc0be73373f4b97dda1ece  # frozen: v1.50.1
     hooks:
-        - id: typos
-          exclude: |
-            (?x)^(rdmo_github/locale/.*)$
+      - id: typos
+        exclude: |
+          (?x)^(rdmo_github/locale/.*)$
