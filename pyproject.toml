@@ -1,16 +1,15 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [project]
 name = "rdmo-plugins-github"
 authors = [
     {name = "RDMO Arbeitsgemeinschaft", email = "rdmo-team@listserv.dfn.de"},
-    {name = "Max Planck Information and Technology, MPG", email = "rdmo@mpdl.mpg.de"},
-]
-maintainers = [
-    {name = "Jochen Klar", email = "mail@jochenklar.de"},
-    {name = "Max Planck Information and Technology, MPG", email = "rdmo@mpdl.mpg.de"},
+    {name = "Max Planck Information and Technology, MPG", email = "rdmo@maxit.mpg.de"},
 ]
 description = "GitHub Plugins for RDMO."
 readme = "README.md"
@@ -19,17 +18,19 @@ license-files = ["LICENSE"]
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Environment :: Web Environment',
-    'Framework :: Django :: 2.2',
-    'Intended Audience :: Science/Research',
     'Operating System :: OS Independent',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: Apache Software License',
     "Programming Language :: Python :: 3 :: Only",
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
 ]
 dependencies = [
     "requests>=2.31",
-    "rdmo-plugins-maus @ git+https://github.com/MPDL/rdmo-plugins-maus"
+    "rdmo-plugins-maus @ git+https://github.com/rdmorganiser/rdmo-plugins-maus"
 ]
 dynamic = ["version"]
 
@@ -44,14 +45,11 @@ dev = [
     "twine",
 ]
 
-[tool.setuptools.packages.find]
-include = ["rdmo_github*"]
+[tool.hatch.version]
+source = "vcs"
 
-[tool.setuptools.package-data]
-"*" = ["*"]
-
-[tool.setuptools.dynamic]
-version = {attr = "rdmo_github.__version__"}
+[tool.hatch.build.targets.wheel]
+packages = ["rdmo_github"]
 
 [tool.ruff]
 line-length = 120
@@ -71,9 +69,6 @@ select = [
   "UP",   # pyupgrade
   "W",    # pycodestyle
   "YTT",  # flake8-2020
-]
-ignore = [
-  "RUF012", # mutable-class-default
 ]
 
 [tool.ruff.lint.isort]
