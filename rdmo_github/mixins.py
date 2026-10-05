@@ -70,19 +70,19 @@ class GitHubProviderMixin(OauthProviderMixin):
         """Create the request url for export and import choices."""
 
         url = '{api_url}/repos/{repo}'.format(
-            api_url=self.api_url, repo=repo.replace('https://github.com/', '').strip('/')
+            api_url=self.api_url, repo=repo.replace('https://github.com/', '').strip('/').strip()
         )
 
         if path:
             url += '/contents/{path}'.format(
-                path=quote(path.removeprefix('../').removeprefix('./').strip('/'), safe='')
+                path=quote(path.removeprefix('../').removeprefix('./').strip('/').strip(), safe='')
             )
 
         if suffix:
-            url += suffix
+            url += suffix.strip()
 
         if ref:
-            url += '?ref={ref}'.format(ref=quote(ref, safe=''))
+            url += '?ref={ref}'.format(ref=quote(ref.strip(), safe=''))
 
         return url
 
