@@ -220,6 +220,11 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         form.fields['exports'].choices = selected_choices
         form.fields['exports'].widget.choice_warnings = export_choice_warnings
 
+        # disable repo fields to hinder changes after selection
+        form.fields['new_repo'].disabled = True
+        form.fields['repo'].choices = [(form.cleaned_data.get('repo'), form.cleaned_data.get('repo'))]
+        form.fields['repo'].include_other_choice = False
+            
         context = {'form': form}
 
         return context, export_choice_warnings

@@ -227,12 +227,18 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
     def validate_import_choices(self, form):
         import_choice_warnings, selected_choice_keys, _checked_import_urls = self.check_urls(form.cleaned_data)
+        
         self.store_in_session(self.request, 'github_import_choice_warnings', import_choice_warnings)
+        
         selected_choices = [c for c in self.import_choices.get('choices', []) if c[2] in selected_choice_keys]
 
         form.fields['imports'].choices = selected_choices
         form.fields['imports'].widget.choice_warnings = import_choice_warnings
 
+        # Keep selected repo only, to hinder changes after selection
+        form.fields['repo'].choices = [(form.cleaned_data.get('repo'), form.cleaned_data.get('repo'))]
+        form.fields['repo'].include_other_choice = False
+        
         context = {'source_title': 'GitHub', 'form': form}
 
         return context, import_choice_warnings
