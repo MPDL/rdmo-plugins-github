@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.31",
-    "rdmo-plugins-maus @ git+https://github.com/rdmorganiser/rdmo-plugins-maus"
+    "rdmo-plugins-maus @ git+https://github.com/MPDL/rdmo-plugins-maus"
 ]
 dynamic = ["version"]
 
