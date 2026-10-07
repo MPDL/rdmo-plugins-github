@@ -135,9 +135,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
                     return render(self.request, 'plugins/github_import_form.html', context, status=200)
 
             #   2. Import selected choices
-            urls, import_choice_warnings = self.process_form_data(form.cleaned_data)
-
-            repo_url = urls.pop('repo')
+            repo_url, urls, import_choice_warnings = self.process_form_data(form.cleaned_data)
 
             if len(urls) == 0:
                 return render(
@@ -172,7 +170,6 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             imports[key] = value
 
         urls = {
-            'repo': self.get_request_url(repo),
             'sbom': self.get_request_url(repo, suffix='/dependency-graph/sbom'),  # only in default branch
             'languages': self.get_request_url(repo, suffix='/languages'),  # only in default branch
             'xml': (
@@ -192,7 +189,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             ),
             'license': self.get_request_url(repo),  # independent of branch, last changes to LICENSE
         }
-        selected_urls = {k: urls.get(k) for k in ['repo', *imports.keys()]}
+        selected_urls = {k: urls.get(k) for k in imports}
 
         access_token = self.get_from_session(self.request, 'access_token')
         import_choice_warnings = {}
@@ -264,7 +261,9 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             if choice_key not in new_choice_warnings:
                 selected_urls[choice_key] = url
 
-        return selected_urls, new_choice_warnings
+        repo_url = self.get_request_url(form_data.get('repo'))
+
+        return repo_url, selected_urls, new_choice_warnings
 
     def get_license(self, url, headers):
         license_id = None
