@@ -62,7 +62,7 @@ PROJECT_EXPORTS += [
 ]
 ```
 
-The export and import plugins use the plugin [rdmo-plugins-maus](https://github.com/MPDL/rdmo-plugins-maus). This plugin provides the SMP specific import and export choices as well as custom fields used in their form templates. `rdmo-plugins-maus` is installed as a dependency of `rdmo-plugins-github`, but it must be also included in `INSTALLED_APPS` in `config/settings/local.py`:
+The export and import plugins use the plugin [rdmo-plugins-maus](https://github.com/rdmorganiser/rdmo-plugins-maus). This plugin provides the SMP specific import and export choices as well as custom fields used in their form templates. `rdmo-plugins-maus` is installed as a dependency of `rdmo-plugins-github`, but it must be also included in `INSTALLED_APPS` in `config/settings/local.py`:
 
 ```python
 INSTALLED_APPS += ['rdmo_maus']
