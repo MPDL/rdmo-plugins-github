@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.templatetags.static import static
@@ -95,7 +97,7 @@ class GitHubExportForm(GithubBaseForm):
             checked_class='form-group field-new_repo_name',
             unchecked_class='form-group field-repo',
         )
-        js = [format_html(script_tag, static('plugins/js/github_form.js'))]
+        js: ClassVar[list[str]] = [format_html(script_tag, static('plugins/js/github_form.js'))]
 
     def clean(self):
         super().clean()

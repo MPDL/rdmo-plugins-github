@@ -126,7 +126,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 self.store_in_session(self.request, 'github_export_repo', repo_html_url)
 
             self.pop_from_session(self.request, 'github_export_data')
-            if request_data: # enters if request_data is a non-empty list
+            if request_data:  # enters if request_data is a non-empty list
                 url = request_data[0].pop('url')
                 if len(request_data) > 1:
                     self.store_in_session(self.request, 'github_export_data', request_data[1:])
@@ -224,7 +224,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         form.fields['new_repo'].disabled = True
         form.fields['repo'].choices = [(form.cleaned_data.get('repo'), form.cleaned_data.get('repo'))]
         form.fields['repo'].include_other_choice = False
-            
+
         context = {'form': form}
 
         return context, export_choice_warnings
