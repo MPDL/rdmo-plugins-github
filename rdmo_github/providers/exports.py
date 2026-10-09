@@ -1,6 +1,6 @@
 import base64
-from functools import cached_property
 import logging
+from functools import cached_property
 
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext
@@ -295,9 +295,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             initial_branch = 'main' if new_repo else checked_branch
 
             if file_path != initial_file_path or branch != initial_branch:
-                new_export_choice_warnings, _choice_keys = self.check_file_paths(
-                    [export], form_data['repo'], branch
-                )
+                new_export_choice_warnings, _choice_keys = self.check_file_paths([export], form_data['repo'], branch)
                 if choice_key in new_export_choice_warnings and not update_without_warning:
                     processed_exports.append(
                         {

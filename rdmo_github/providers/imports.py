@@ -1,6 +1,6 @@
 import base64
-from functools import cached_property
 import logging
+from functools import cached_property
 
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext
