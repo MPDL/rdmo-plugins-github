@@ -1,4 +1,5 @@
 import base64
+from functools import cached_property
 import logging
 
 from django.shortcuts import redirect, render
@@ -6,7 +7,7 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 import requests
-from rdmo_maus.exports.smp_exports import SMPExportMixin
+from rdmo_maus.exports.mixins import SMPExportMixin
 from rdmo_maus.forms.validators import FilePathExtensionValidator, validate_file_path
 
 from rdmo.core.plugins import get_plugin
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
-    @property
+    @cached_property
     def export_choices(self):
 
         catalog = self.project.catalog.uri_path
@@ -204,16 +205,16 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                     gettext('A file with the same path exists in the selected repository and will be overwritten')
                 ]
 
-        return export_choice_warnings, choice_keys, exports, branch
+        return export_choice_warnings, choice_keys
 
     def validate_export_choices(self, form):
-        export_choice_warnings, selected_choice_keys, checked_export_choices, checked_branch = self.check_file_paths(
+        export_choice_warnings, selected_choice_keys = self.check_file_paths(
             form.cleaned_data.get('exports'), form.cleaned_data.get('repo'), form.cleaned_data.get('branch')
         )
 
         self.store_in_session(self.request, 'github_export_choice_warnings', export_choice_warnings)
-        self.store_in_session(self.request, 'github_checked_export_choices', checked_export_choices)
-        self.store_in_session(self.request, 'github_checked_branch', checked_branch)
+        self.store_in_session(self.request, 'github_checked_export_choices', form.cleaned_data.get('exports'))
+        self.store_in_session(self.request, 'github_checked_branch', form.cleaned_data.get('branch'))
 
         selected_choices = [c for c in self.export_choices.get('choices', []) if c[2] in selected_choice_keys]
 
@@ -294,7 +295,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             initial_branch = 'main' if new_repo else checked_branch
 
             if file_path != initial_file_path or branch != initial_branch:
-                new_export_choice_warnings, _choice_keys, _exports, _branch = self.check_file_paths(
+                new_export_choice_warnings, _choice_keys = self.check_file_paths(
                     [export], form_data['repo'], branch
                 )
                 if choice_key in new_export_choice_warnings and not update_without_warning:

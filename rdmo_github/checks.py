@@ -13,7 +13,7 @@ def check_github_provider_settings(app_configs, **kwargs):
             Error('settings.GITHUB_PROVIDER does not exist.', hint='Add GITHUB_PROVIDER to config/settings/local.py')
         )
     else:
-        for key in ['client_id', 'client_secret']:
+        for key in ('client_id', 'client_secret'):
             if not provider.get(key):
                 errors.append(Error(f'Key "{key}" is missing from settings.GITHUB_PROVIDER'))
 

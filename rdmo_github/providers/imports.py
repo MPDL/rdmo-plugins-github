@@ -1,4 +1,5 @@
 import base64
+from functools import cached_property
 import logging
 
 from django.shortcuts import redirect, render
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
-    @property
+    @cached_property
     def import_choices(self):
         return self.smp_import_choices
 
