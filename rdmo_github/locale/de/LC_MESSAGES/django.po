@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-07 09:34+0000\n"
+"POT-Creation-Date: 2026-10-09 16:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,46 +18,48 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: forms/forms.py:32
+#: forms/forms.py:34
 msgid ""
 "Type the URL of a GitHub repository you want to export to. You need write "
 "access to this repository, otherwise the export will fail."
 msgstr ""
-"Geben Sie die URL eines GitHub-Repositoriums ein, in das Sie exportieren möchten. Sie benötigen Schreibzugriff auf dieses Repositorium, andernfalls schlägt der Export fehl."
+"Geben Sie die URL eines GitHub-Repositoriums ein, in das Sie exportieren "
+"möchten. Sie benötigen Schreibzugriff auf dieses Repositorium, andernfalls "
+"schlägt der Export fehl."
 
-#: forms/forms.py:49
+#: forms/forms.py:51
 msgid "Create a new (public) repository"
 msgstr "Neues (öffentliches) Repositorium anlegen"
 
-#: forms/forms.py:63
+#: forms/forms.py:65
 msgid "Name for the new repository"
 msgstr "Name des neuen Repositoriums"
 
-#: forms/forms.py:64
+#: forms/forms.py:66
 msgid "This name must be unique, otherwise the export will fail."
 msgstr "Dieser Name muss eindeutig sein, andernfalls schlägt der Export fehl."
 
-#: forms/forms.py:66
+#: forms/forms.py:68
 msgid "example-repo-name"
 msgstr "beispiel-repo-name"
 
-#: forms/forms.py:71 forms/forms.py:146
+#: forms/forms.py:73 forms/forms.py:147
 msgid "GitHub repository"
 msgstr "GitHub-Repositorium"
 
-#: forms/forms.py:76
+#: forms/forms.py:78
 msgid "Export choices"
 msgstr "Optionen zum Exportieren"
 
-#: forms/forms.py:77
+#: forms/forms.py:79
 msgid "Warning: Existing content in GitHub will be overwritten."
 msgstr "Warnung: Bestehende Inhalte in GitHub werden überschrieben."
 
-#: forms/forms.py:82
+#: forms/forms.py:84
 msgid "Branch"
 msgstr "Branch"
 
-#: forms/forms.py:83
+#: forms/forms.py:85
 msgid ""
 "An existing branch in the GitHub repository. For a new repository it must be "
 "\"main\"."
@@ -65,31 +67,32 @@ msgstr ""
 "Ein bestehender Branch im GitHub-Repositorium. Bei einem neuen Repositorium "
 "muss er „main“ sein."
 
-#: forms/forms.py:87
+#: forms/forms.py:89
 msgid "Commit message"
 msgstr "Commitnachricht"
 
-#: forms/forms.py:108
+#: forms/forms.py:110
 msgid "A name for the new repository is required."
 msgstr "Ein Name für das neue Repositorium ist erforderlich."
 
-#: forms/forms.py:115
+#: forms/forms.py:117
 msgid "A GitHub repository is required."
 msgstr "Ein GitHub-Repositorium ist erforderlich."
 
-#: forms/forms.py:125
+#: forms/forms.py:127
 msgid ""
 "Type the URL of a GitHub repository you want to import from. It must be "
 "either public, or accessible to you."
 msgstr ""
-"Geben Sie die URL des GitHub-Repositoriums EIN, aus dem Sie importieren möchten. Es muss entweder öffentlich oder für Sie zugänglich sein."
+"Geben Sie die URL des GitHub-Repositoriums EIN, aus dem Sie importieren "
+"möchten. Es muss entweder öffentlich oder für Sie zugänglich sein."
 
-#: forms/forms.py:139 providers/exports.py:30 providers/exports.py:31
-#: providers/exports.py:34 providers/exports.py:37
+#: forms/forms.py:141 providers/exports.py:31 providers/exports.py:32
+#: providers/exports.py:35 providers/exports.py:38
 msgid "File path"
 msgstr "Dateipfad"
 
-#: forms/forms.py:140
+#: forms/forms.py:142
 msgid ""
 "The import file's relative path in the repository. The file must be in XML "
 "format."
@@ -97,15 +100,15 @@ msgstr ""
 "Der relative Pfad der Importdatei im Repositorium. Die Datei muss im XML-"
 "Format vorliegen."
 
-#: forms/forms.py:141 providers/exports.py:48
+#: forms/forms.py:143 providers/exports.py:49
 msgid "example_folder/example_xml_file.xml"
 msgstr "beispiel_ordner/beispiel_xml_datei.xml"
 
-#: forms/forms.py:151
+#: forms/forms.py:150
 msgid "Import choices"
 msgstr "Optionen zum Importieren"
 
-#: forms/forms.py:153
+#: forms/forms.py:152
 msgid ""
 "Select the import choices. Use the drag and drop to reorder them by "
 "priority. In the event of a conflict, choices with higher priority (at the "
@@ -115,7 +118,7 @@ msgstr ""
 "um sie nach Priorität zu ordnen. Im Konfliktfall überschreiben höher "
 "priorisierte Optionen (oben) die niedrigeren (unten)."
 
-#: forms/forms.py:161
+#: forms/forms.py:160
 msgid "Branch, tag, or commit"
 msgstr "Branch, Tag, oder Commit"
 
@@ -156,37 +159,36 @@ msgstr "OAuth-Fehler"
 msgid "Something went wrong: %s"
 msgstr "Etwas ist schief gelaufen: %s"
 
-#: mixins.py:270
+#: mixins.py:267
 msgid "You do not have any GitHub repositories yet."
 msgstr "Sie haben noch keine GitHub-Repositorien."
 
-#: mixins.py:272
-msgid ""
-"These are your most recently updated, accessible GitHub repositories."
+#: mixins.py:269
+msgid "These are your most recently updated, accessible GitHub repositories."
 msgstr ""
 "Das sind Ihre zuletzt aktualisierten, zugänglichen Github-Repositorien."
 
-#: providers/exports.py:31
+#: providers/exports.py:32
 msgid "CSV (comma separated)"
 msgstr "CSV (Komma getrennt)"
 
-#: providers/exports.py:34
+#: providers/exports.py:35
 msgid "CSV (semicolon separated)"
 msgstr "CSV (Semikolon getrennt)"
 
-#: providers/exports.py:53 providers/exports.py:58
+#: providers/exports.py:54 providers/exports.py:59
 msgid "example_folder/example_csv_file.csv"
 msgstr "beispiel_ordner/beispiel_csv_datei.csv"
 
-#: providers/exports.py:63
+#: providers/exports.py:64
 msgid "example_folder/example_json_file.json"
 msgstr "beispiel_ordner/beispiel_json_datei.json"
 
-#: providers/exports.py:137
+#: providers/exports.py:139
 msgid "Something went wrong"
 msgstr "Etwas ist schief gelaufen"
 
-#: providers/exports.py:140
+#: providers/exports.py:142
 msgid ""
 "Either the export choices could not be created or the repository content "
 "would have been overwritten without a warning."
@@ -194,7 +196,7 @@ msgstr ""
 "Entweder konnten die Export-Optionen nicht erstellt werden oder der Inhalt "
 "des Repositoriums wäre ohne Warnung überschrieben worden."
 
-#: providers/exports.py:203
+#: providers/exports.py:205
 msgid ""
 "A file with the same path exists in the selected repository and will be "
 "overwritten"
@@ -202,7 +204,7 @@ msgstr ""
 "Eine Datei mit demselben Pfad existiert im ausgewählten Repositorium und "
 "wird überschrieben"
 
-#: providers/exports.py:304
+#: providers/exports.py:311
 msgid ""
 "not exported - it would have overwritten existing file in repository without "
 "a warning."
@@ -210,37 +212,37 @@ msgstr ""
 "nicht exportiert - es hätte die bestehende Datei im Repositorium ohne "
 "Warnung überschrieben."
 
-#: providers/exports.py:319
+#: providers/exports.py:326
 msgid "not exported - it could not be created."
 msgstr "nicht exportiert - es konnte nicht erstellt werden."
 
-#: providers/exports.py:322
+#: providers/exports.py:329
 msgid "successfully exported."
 msgstr "erfolgreich exportiert."
 
-#: providers/exports.py:381 providers/exports.py:385
+#: providers/exports.py:388 providers/exports.py:392
 msgid "not exported - something went wrong."
 msgstr "nicht exportiert - etwas ist schief gelaufen."
 
-#: providers/imports.py:89
+#: providers/imports.py:86
 msgid "GitHub Import"
 msgstr "GitHub-Import"
 
-#: providers/imports.py:103 providers/imports.py:151
+#: providers/imports.py:100 providers/imports.py:146
 msgid "Import error"
 msgstr "Fehler beim Import"
 
-#: providers/imports.py:103
+#: providers/imports.py:100
 msgid "Something went wrong."
 msgstr "Etwas ist schief gelaufen."
 
-#: providers/imports.py:152
+#: providers/imports.py:147
 msgid "Either none of the import choices exist or they could not be requested."
 msgstr ""
 "Entweder existieren die Importoptionen nicht oder sie konnten nicht "
 "angefragt werden."
 
-#: providers/imports.py:213
+#: providers/imports.py:207
 msgid ""
 "Either there is no file with this path in the selected repository or it "
 "cannot be requested"
@@ -248,19 +250,19 @@ msgstr ""
 "Entweder existiert keine Datei mit diesem Pfad im ausgewälten Repositorium "
 "oder sie kann nicht angefragt werden"
 
-#: providers/imports.py:216
+#: providers/imports.py:210
 msgid "Repository endpoint cannot be requested"
 msgstr "Der Repositorium-Endpunkt kann nicht angefragt werden"
 
-#: providers/imports.py:222
+#: providers/imports.py:217
 msgid "No languages found"
 msgstr "Keine Sprachen gefunden"
 
-#: providers/imports.py:227
+#: providers/imports.py:222
 msgid "No license found"
 msgstr "Keine Lizenz gefunden"
 
-#: providers/imports.py:318
+#: providers/imports.py:321
 msgid " and"
 msgstr " und"
 
@@ -272,7 +274,7 @@ msgstr "GitHub-Integration hinzufügen"
 msgid "Send to GitHub"
 msgstr "An GitHub senden"
 
-#: providers/issues.py:16
+#: providers/issues.py:17
 msgid ""
 "This integration allow the creation of issues in arbitrary GitHub "
 "repositories. The upload of attachments is not supported by GitHub."
@@ -280,12 +282,12 @@ msgstr ""
 "Diese Integration ermöglicht die Erstellung von Issues in beliebigen GitHub-"
 "Repositorien. Das Hochladen von Anhängen wird von GitHub nicht unterstützt."
 
-#: providers/issues.py:72
+#: providers/issues.py:71
 msgid "The URL of the GitHub repository to send issues to."
 msgstr ""
 "Die URL des GitHub-Repositoriums, an das Issues gesendet werden sollen."
 
-#: providers/issues.py:77
+#: providers/issues.py:76
 msgid "The secret for a GitHub webhook to close a task (optional)."
 msgstr ""
 "Das 'secret' für einen GitHub-Webhook zum Schließen einer Aufgabe (optional)."
