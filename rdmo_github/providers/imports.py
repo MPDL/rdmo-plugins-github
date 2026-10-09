@@ -209,6 +209,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
                     else gettext('Repository endpoint cannot be requested')
                 )
                 import_choice_warnings[choice_key] = [warning]
+                continue
 
             # No error status if no languages found, response is just an empty object
             if choice_key == 'languages' and response.json() == {}:
@@ -295,7 +296,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
         response = requests.get(url, headers=headers)
         try:
             response.raise_for_status()
-            sbom = response.json().get('sbom')
+            sbom = response.json().get('sbom', {})
         except requests.HTTPError:
             return {'dependencies': None, 'dependency_licenses': None}
 
@@ -316,7 +317,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             )
             if isinstance(license, str):
                 license = license.split(' AND')
-                license = ','.join(license[:-1]) + _(' and') + license[-1] if len(license) > 1 else license[0]
+                license = ','.join(license[:-1]) + gettext(' and') + license[-1] if len(license) > 1 else license[0]
 
             if license and license in dependency_licenses:
                 dependency_licenses[license].append(name)
