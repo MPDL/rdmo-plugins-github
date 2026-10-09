@@ -236,7 +236,7 @@ class GitHubProviderMixin(OauthProviderMixin):
 
         return access_token
 
-    def get_repo_choices(self, access_token, minimum_repo_permission, per_page=10):
+    def fetch_repo_choices(self, access_token, minimum_repo_permission, per_page=10):
         if access_token is None:
             return []
 
@@ -260,8 +260,8 @@ class GitHubProviderMixin(OauthProviderMixin):
 
         return repo_choices
 
-    def get_repo_form_field_data(self, access_token, minimum_repo_permission):
-        repo_choices = self.get_repo_choices(access_token, minimum_repo_permission)
+    def fetch_repo_form_field_data(self, access_token, minimum_repo_permission):
+        repo_choices = self.fetch_repo_choices(access_token, minimum_repo_permission)
 
         if len(repo_choices) == 0:
             repo_help_text = _('You do not have any GitHub repositories yet.')

@@ -84,7 +84,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             self.store_in_session(self.request, 'redirect_url', redirect_url)
             return self.authorize(self.request)
 
-        repo_choices, repo_help_text = self.get_repo_form_field_data(access_token, minimum_repo_permission='push')
+        repo_choices, repo_help_text = self.fetch_repo_form_field_data(access_token, minimum_repo_permission='push')
         form_kwargs = {
             'repo_choices': repo_choices,
             'repo_help_text': repo_help_text,
@@ -101,7 +101,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 return redirect('project', self.project.id)
 
         access_token = self.get_from_session(self.request, 'access_token')
-        repo_choices, repo_help_text = self.get_repo_form_field_data(access_token, minimum_repo_permission='push')
+        repo_choices, repo_help_text = self.fetch_repo_form_field_data(access_token, minimum_repo_permission='push')
         form_kwargs = {
             'repo_choices': repo_choices,
             'repo_help_text': repo_help_text,

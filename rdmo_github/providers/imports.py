@@ -30,7 +30,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             self.store_in_session(self.request, 'redirect_url', redirect_url)
             return self.authorize(self.request)
 
-        repo_choices, repo_help_text = self.get_repo_form_field_data(access_token, minimum_repo_permission='pull')
+        repo_choices, repo_help_text = self.fetch_repo_form_field_data(access_token, minimum_repo_permission='pull')
         form_kwargs = {'repo_choices': repo_choices, 'repo_help_text': repo_help_text}
         if len(self.import_choices) > 0:
             form_kwargs['import_choices'] = self.import_choices
@@ -107,7 +107,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
     def process_form_submission(self):
         access_token = self.get_from_session(self.request, 'access_token')
-        repo_choices, repo_help_text = self.get_repo_form_field_data(access_token, minimum_repo_permission='pull')
+        repo_choices, repo_help_text = self.fetch_repo_form_field_data(access_token, minimum_repo_permission='pull')
         form_kwargs = {'repo_choices': repo_choices, 'repo_help_text': repo_help_text}
         if len(self.import_choices) > 0:
             form_kwargs['import_choices'] = self.import_choices
@@ -266,7 +266,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         return repo_url, selected_urls, new_choice_warnings
 
-    def get_license(self, url, headers):
+    def fetch_license(self, url, headers):
         license_id = None
 
         response = requests.get(url, headers=headers)
@@ -280,7 +280,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         return license_id
 
-    def get_languages(self, url, headers):
+    def fetch_languages(self, url, headers):
         languages = []
 
         response = requests.get(url, headers=headers)
@@ -292,7 +292,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         return languages
 
-    def get_sbom(self, url, headers):
+    def fetch_sbom(self, url, headers):
         response = requests.get(url, headers=headers)
         try:
             response.raise_for_status()
@@ -337,7 +337,7 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         return {'dependencies': dependencies_str, 'dependency_licenses': dependency_licenses_str}
 
-    def _get_file(self, url, headers):
+    def _fetch_file(self, url, headers):
         content = None
 
         response = requests.get(url, headers=headers)
@@ -351,8 +351,8 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
         return content
 
-    def get_citation(self, url, headers):
-        return self._get_file(url, headers)
+    def fetch_citation(self, url, headers):
+        return self._fetch_file(url, headers)
 
-    def get_codemeta(self, url, headers):
-        return self._get_file(url, headers)
+    def fetch_codemeta(self, url, headers):
+        return self._fetch_file(url, headers)
