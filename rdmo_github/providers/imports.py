@@ -24,6 +24,8 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
 
     def render(self):
         self.pop_from_session(self.request, 'github_import_choice_warnings')
+        self.pop_from_session(self.request, 'github_validation_repo_choice')
+        self.pop_from_session(self.request, 'github_validation_selected_choice_keys')
 
         access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
         if access_token is None:
@@ -114,6 +116,21 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
             form_kwargs['import_choices'] = self.import_choices
 
         form = GitHubImportForm(self.request.POST, **form_kwargs)
+
+        validation_repo_choice = self.get_from_session(self.request, 'github_validation_repo_choice')
+        if validation_repo_choice is not None:
+            validation_selected_choice_keys = self.get_from_session(
+                self.request, 'github_validation_selected_choice_keys'
+            )
+            if validation_selected_choice_keys is not None:
+                validation_selected_choices = [
+                    c for c in self.import_choices.get('choices', []) if c[2] in validation_selected_choice_keys
+                ]
+                form.fields['imports'].choices = validation_selected_choices
+
+            form.fields['repo'].choices = [(validation_repo_choice, validation_repo_choice)]
+            form.fields['repo'].include_other_choice = False
+
         if form.is_valid():
             self.request.session['import_source_title'] = self.source_title = 'GitHub'
 
@@ -237,6 +254,9 @@ class GitHubImportProvider(GitHubProviderMixin, SMPRepoImportMixin):
         # Keep selected repo only, to hinder changes after selection
         form.fields['repo'].choices = [(form.cleaned_data.get('repo'), form.cleaned_data.get('repo'))]
         form.fields['repo'].include_other_choice = False
+
+        self.store_in_session(self.request, 'github_validation_repo_choice', form.cleaned_data.get('repo'))
+        self.store_in_session(self.request, 'github_validation_selected_choice_keys', selected_choice_keys)
 
         context = {'source_title': 'GitHub', 'form': form}
 

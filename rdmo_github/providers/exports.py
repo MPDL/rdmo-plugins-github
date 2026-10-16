@@ -78,6 +78,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
     def render(self):
         self.pop_from_session(self.request, 'github_export_choice_warnings')
+        self.pop_from_session(self.request, 'github_validation_repo_choice')
+        self.pop_from_session(self.request, 'github_validation_selected_choice_keys')
 
         access_token = self.validate_access_token(self.request, self.get_from_session(self.request, 'access_token'))
         if access_token is None:
@@ -109,6 +111,23 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
             'export_choices': self.export_choices,
         }
         form = GitHubExportForm(self.request.POST, **form_kwargs)
+
+        validation_repo_choice = self.get_from_session(self.request, 'github_validation_repo_choice')
+        if validation_repo_choice is not None:
+            validation_selected_choice_keys = self.get_from_session(
+                self.request, 'github_validation_selected_choice_keys'
+            )
+            if validation_selected_choice_keys is not None:
+                validation_selected_choices = [
+                    c for c in self.export_choices.get('choices', []) if c[2] in validation_selected_choice_keys
+                ]
+                form.fields['exports'].choices = validation_selected_choices
+
+            # disable repo fields to hinder changes after selection
+            form.fields['new_repo'].disabled = True
+            form.fields['repo'].choices = [(validation_repo_choice, validation_repo_choice)]
+            form.fields['repo'].include_other_choice = False
+
         if form.is_valid():
             # 1. Validate export choices: Check submitted file paths to warn user if repo files will be overwritten
             export_choice_warnings = self.get_from_session(self.request, 'github_export_choice_warnings')
@@ -225,6 +244,9 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
         form.fields['new_repo'].disabled = True
         form.fields['repo'].choices = [(form.cleaned_data.get('repo'), form.cleaned_data.get('repo'))]
         form.fields['repo'].include_other_choice = False
+
+        self.store_in_session(self.request, 'github_validation_repo_choice', form.cleaned_data.get('repo'))
+        self.store_in_session(self.request, 'github_validation_selected_choice_keys', selected_choice_keys)
 
         context = {'form': form}
 
