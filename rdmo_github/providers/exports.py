@@ -305,7 +305,7 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
         exports = form_data.get('exports')
         processed_exports = []
-        for export in exports:
+        for i, export in enumerate(exports):
             choice_key, file_path = export.split(',')
             initial_file_path = (
                 file_path
@@ -337,7 +337,8 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
 
             choice_request_data = {}
             stored_sha = self.pop_from_session(self.request, f'github_sha_{choice_key}')
-            if stored_sha is not None:
+
+            if not new_repo and stored_sha is not None:  # no url checks for new_repo
                 choice_request_data['sha'] = stored_sha
 
             content = self.render_export_content(choice_key)
@@ -348,9 +349,14 @@ class GitHubExportProvider(GitHubProviderMixin, Export, SMPExportMixin):
                 success = True
                 processing_status = _('successfully exported.')
 
+                message = (
+                    f'{form_data.get("commit_message")} ({i + 1})'
+                    if len(exports) > 1
+                    else form_data.get('commit_message')
+                )
                 choice_request_data.update(
                     {
-                        'message': form_data.get('commit_message'),
+                        'message': message,
                         'content': content,
                         'branch': branch,
                         'url': self.get_request_url(repo, path=file_path),
