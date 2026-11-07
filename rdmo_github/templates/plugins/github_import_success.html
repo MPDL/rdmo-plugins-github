@@ -1,0 +1,34 @@
+{% extends 'core/page.html' %}
+{% load i18n core_tags %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="method" value="import_repo_subset" />
+
+            <h1>{% trans 'Successful Import from GitHub' %}</h1>
+
+            {% if failed_import_choices|length == 1 %}
+                {% trans 'This import choice could not be requested' %}: {{ failed_import_choices.0 }}<br><br>
+            {% else %}
+                {% trans 'These import choices could not be requested' %}:
+                <ul>
+                    {% for import_label in failed_import_choices %}
+                        <li>{{ import_label }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            {% trans 'You could either import the rest of the values found in the repository or cancel the process.' %}
+
+            <br><br>
+            <input type="submit" value="{% trans 'Import anyway' %}" class="btn btn-primary" />
+            <input type="submit" name="cancel" value="{% trans 'Cancel' %}" class="btn" />
+        </form>
+    </div>
+</div>
+
+{% endblock %}

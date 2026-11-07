@@ -1,0 +1,14 @@
+{% extends 'core/page.html' %}
+{% load i18n core_tags %}
+
+{% block head %}
+    {{ form.media }}
+{% endblock %}
+
+{% block page %}
+
+    <h1>{% trans 'Export to GitHub' %}</h1>
+
+    {% bootstrap_form submit=_('Export to GitHub') %}
+
+{% endblock %}
