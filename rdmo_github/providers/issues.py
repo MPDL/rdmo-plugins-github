@@ -20,7 +20,7 @@ class GitHubIssueProvider(GitHubProviderMixin, OauthIssueProvider):
 
     def get_post_url(self, request, issue, integration, subject, message, attachments):
         repo_url = integration.get_option_value('repo_url')
-        if repo_url:
+        if repo_url and repo_url.startswith('https://github.com'):
             repo = repo_url.replace('https://github.com', '').strip('/')
             return f'https://api.github.com/repos/{repo}/issues'
 
